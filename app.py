@@ -5,7 +5,7 @@ import plotly.express as px  # For engineering charts
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Engineering Ops ERP",
+    page_title="Nibworks",
     page_icon="🏭",
     layout="wide"
 )
@@ -150,3 +150,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
