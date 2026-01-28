@@ -65,7 +65,7 @@ class InventoryManager:
 
 # --- MAIN APP UI ---
 def main():
-    st.title("🏭 Engineering Business Ops")
+    st.title("🏭 Nibworks")
     
     # Initialize our Logic Engine
     manager = InventoryManager()
@@ -150,4 +150,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
