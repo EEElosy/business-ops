@@ -1,3 +1,5 @@
 streamlit
 st-gsheets-connection
 pandas
+[passwords]
+admin_password = "admin123"
