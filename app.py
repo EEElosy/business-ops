@@ -109,7 +109,7 @@ class DbManager:
 # --- MAIN APP ---
 def main():
     if check_password():
-        st.title("🏭 Sales Negotiation Console")
+        st.title("✒️ Nibworks")
         db = DbManager()
         
         try:
@@ -125,7 +125,7 @@ def main():
             c1, c2 = st.columns(2)
             
             with c1:
-                st.subheader("🛒 Transaction")
+                st.subheader("🛒 Sale")
                 search = st.text_input("Find Item", placeholder="Search Brand, Model...")
                 
                 if search:
@@ -189,7 +189,7 @@ def main():
             with c2:
                 st.subheader("💸 Log Expense")
                 with st.form("expense_form"):
-                    cat = st.selectbox("Category", ["Rent", "Electricity", "Marketing", "Salary", "Inventory Purchase", "Other"])
+                    cat = st.selectbox("Category", ["Debt", "Taxi", "Food & Beverage", "Salary", "Inventory Purchase", "Other"])
                     e_col1, e_col2 = st.columns([2, 1])
                     amt = e_col1.number_input("Amount", min_value=0.0)
                     curr = e_col2.selectbox("Currency", ["$", "€", "₺", "£"])
@@ -268,3 +268,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
