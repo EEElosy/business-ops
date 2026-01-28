@@ -3,7 +3,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import date
 
-st.set_page_config(layout="wide", page_title="Engineering Ops ERP")
+st.set_page_config(layout="wide", page_title="Nibworks ERP")
 
 # --- LOGIC ENGINE ---
 class InventoryManager:
@@ -62,7 +62,7 @@ def filter_dataframe(df, search_term):
 
 # --- MAIN APP ---
 def main():
-    st.title("🏭 Inventory Management System")
+    st.title("🏭 Nibworks")
     
     manager = InventoryManager()
     data = manager.load_data()
@@ -163,3 +163,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
