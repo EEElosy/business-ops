@@ -62,7 +62,7 @@ def filter_dataframe(df, search_term):
 
 # --- MAIN APP ---
 def main():
-    st.title("🏭 Nibworks")
+    st.title("✒️ Nibworks")
     
     manager = InventoryManager()
     data = manager.load_data()
@@ -163,4 +163,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
