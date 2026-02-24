@@ -214,7 +214,7 @@ def main():
                                 "Status": "In Progress", "Price": n_price, "Currency": n_curr
                             })
                             st.success("Order Added!")
-                            st.rerun()
+                            #st.rerun()
                         else:
                             st.warning("Name is required.")
 
@@ -343,6 +343,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
