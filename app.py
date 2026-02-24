@@ -152,7 +152,7 @@ def main():
                     # 1. Price & Currency Input
                     col_p, col_c = st.columns([2, 1])
                     final_price = col_p.number_input("Final Agreed Price", value=target)
-                    sales_curr = col_c.selectbox("Sales Currency", ["$", "€", "₺", "£"], index=["$", "€", "₺", "£"].index(item_currency) if item_currency in ["$", "€", "₺", "£"] else 0)
+                    sales_curr = col_c.selectbox("Sales Currency", ["₺", "$", "€", "£"], index=["₺", "$", "€", "£"].index(item_currency) if item_currency in ["₺", "$", "€", "£"] else 0)
                     
                     # 2. Exchange Rate Logic (The Smart Part)
                     exchange_rate = 1.0
@@ -184,10 +184,10 @@ def main():
             with c2:
                 st.subheader("💸 Log Expense")
                 with st.form("expense_form"):
-                    cat = st.selectbox("Category", ["Rent", "Electricity", "Marketing", "Salary", "Inventory Purchase", "Other"])
+                    cat = st.selectbox("Category", ["Shipment", "Taxi", "Food & Beverages", "Salary", "Debt", "Inventory Purchase", "Other"])
                     e_col1, e_col2 = st.columns([2, 1])
                     amt = e_col1.number_input("Amount", min_value=0.0)
-                    curr = e_col2.selectbox("Currency", ["$", "€", "₺", "£"])
+                    curr = e_col2.selectbox("Currency", ["₺", "$", "€", "£"])
                     note = st.text_input("Note")
                     
                     if st.form_submit_button("Save Expense"):
@@ -205,7 +205,7 @@ def main():
                     n_name = st.text_input("Customer/Order Name")
                     n_qty = st.number_input("Quantity", min_value=1, step=1)
                     n_price = st.number_input("Quoted Price", value=0.0)
-                    n_curr = st.selectbox("Currency", ["$", "€", "₺", "£"])
+                    n_curr = st.selectbox("Currency", ["₺", "$", "€", "£"])
                     
                     if st.form_submit_button("Create Order"):
                         if n_name:
@@ -269,7 +269,7 @@ def main():
                     cost_p = c_cost.number_input("Purchase Price (Cost)", value=0.0)
                     targ_p = c_target.number_input("Target Sale Price", value=0.0)
                     stk = c_stock.number_input("Stock", value=1, step=1)
-                    cur = c_cur.selectbox("Currency", ["$", "€", "₺", "£"])
+                    cur = c_cur.selectbox("Currency", ["₺", "$", "€", "£"])
                     
                     if st.form_submit_button("Save Item"):
                         new_item = {
@@ -343,5 +343,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
