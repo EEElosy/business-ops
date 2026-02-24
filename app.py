@@ -216,7 +216,7 @@ def main():
                                 "Status": "In Progress", "Price": n_price, "Currency": n_curr
                             })
                             st.success("Order Added!")
-                            #st.rerun()
+                            st.rerun()
                             
 
             with col_queue:
@@ -344,6 +344,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
