@@ -208,15 +208,16 @@ def main():
                     n_curr = st.selectbox("Currency", ["₺", "$", "€", "£"])
                     
                     if st.form_submit_button("Create Order"):
-                        if n_name:
+                        if not n_name:
+                            st.warning("Name is required.")
+                        else:
                             db.add_nib_order(nib_orders, {
                                 "Date": str(n_date), "Name": n_name, "Quantity": n_qty,
                                 "Status": "In Progress", "Price": n_price, "Currency": n_curr
                             })
                             st.success("Order Added!")
                             #st.rerun()
-                        else:
-                            st.warning("Name is required.")
+                            
 
             with col_queue:
                 st.subheader("📋 Active Work Queue")
@@ -343,6 +344,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
