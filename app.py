@@ -3,7 +3,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import date, datetime, timedelta
 
-st.set_page_config(layout="wide", page_title="Nibworks ERP ✒️")
+st.set_page_config(layout="wide", page_title="Nibworks ✒️")
 
 # --- AUTHENTICATION ---
 def check_password():
@@ -103,7 +103,7 @@ class DbManager:
 # --- MAIN APP ---
 def main():
     if check_password():
-        st.title("🏭 Operations & Service ERP")
+        st.title("Nibworks ERP ✒️")
         db = DbManager()
         
         try:
@@ -343,4 +343,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
