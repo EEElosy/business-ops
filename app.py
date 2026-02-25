@@ -50,11 +50,12 @@ class DbManager:
 
     def update_sheet(self, sheet_name, dataframe):
         self.conn.update(worksheet=sheet_name, data=dataframe)
-
+        
     # --- NIB ORDER ACTIONS ---
     def add_nib_order(self, df, order_data):
         updated_df = pd.concat([df, pd.DataFrame([order_data])], ignore_index=True)
         self.update_sheet("Nib Orders", updated_df)
+        return updated_df # <--- Added this return statement!
 
     def update_nib_order(self, df, index, new_status, new_price):
         df.loc[index, "Status"] = new_status
@@ -193,30 +194,34 @@ def main():
                     if st.form_submit_button("Save Expense"):
                         db.log_expense(cat, amt, curr, note)
                         st.success("Expense Saved!")
-
+                        
         # --- TAB 2: NIB CUSTOMIZATION SERVICES ---
         with tab_nib:
             col_queue, col_new = st.columns([2, 1])
             
             with col_new:
                 st.subheader("➕ New Nib Order")
-                with st.form("new_nib"):
+                # 1. Added clear_on_submit=True to wipe form after success
+                with st.form("new_nib", clear_on_submit=True):
                     n_date = st.date_input("Order Date", value=date.today())
                     n_name = st.text_input("Customer/Order Name")
                     n_qty = st.number_input("Quantity", min_value=1, step=1)
-                    n_price = st.number_input("Quoted Price", value=0.0)
+                    
+                    # 2. Added step=50.0
+                    n_price = st.number_input("Quoted Price", value=0.0, step=50.0)
                     n_curr = st.selectbox("Currency", ["₺", "$", "€", "£"])
                     
                     if st.form_submit_button("Create Order"):
                         if n_name:
-                            db.add_nib_order(nib_orders, {
+                            # 3. Capture the fresh data immediately without refreshing the app
+                            nib_orders = db.add_nib_order(nib_orders, {
                                 "Date": str(n_date), "Name": n_name, "Quantity": n_qty,
                                 "Status": "In Progress", "Price": n_price, "Currency": n_curr
                             })
-                            st.success("Order Added!")
-                            st.rerun()
+                            st.success("✅ Order Added!")
+                            # Removed st.rerun() here so it doesn't jump tabs!
                         else:
-                            st.warning("Name is required.")
+                            st.error("⚠️ Name is required to place an order.")
 
             with col_queue:
                 st.subheader("📋 Active Work Queue")
@@ -227,18 +232,24 @@ def main():
                     st.success("All caught up! No active orders.")
                 else:
                     for idx, row in active_orders.iterrows():
-                        # Time Delta Calculation
                         order_date = datetime.strptime(str(row["Date"]), "%Y-%m-%d").date()
                         days_waiting = (date.today() - order_date).days
                         
-                        # UI Card rendering
                         with st.container():
                             st.markdown(f"**{row['Name']}** | 📦 Qty: {row['Quantity']}")
                             st.markdown(f"🔴 *In Progress* — Waiting: **{days_waiting} days**")
                             
-                            c_price, c_curr, c_btn = st.columns([2, 1, 1])
-                            new_p = c_price.number_input("Price", value=float(row["Price"]), key=f"p_{idx}")
+                            c_price, c_btn = st.columns([2, 1])
                             
+                            # 4. Added currency symbol to label & set step=50.0
+                            new_p = c_price.number_input(
+                                f"Final Price ({row['Currency']})", 
+                                value=float(row["Price"]), 
+                                step=50.0, 
+                                key=f"p_{idx}"
+                            )
+                            
+                            st.write("##") # Invisible spacer to push the button down
                             if c_btn.button("✅ Mark Completed", key=f"btn_{idx}"):
                                 db.update_nib_order(nib_orders, idx, "Completed", new_p)
                                 st.rerun()
@@ -343,6 +354,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
