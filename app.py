@@ -201,27 +201,31 @@ def main():
             
             with col_new:
                 st.subheader("➕ New Nib Order")
-                # 1. Added clear_on_submit=True to wipe form after success
+                
+                # 1. We create an "empty placeholder" at the TOP of the section
+                # so the error message appears above the form, not below it.
+                msg_box = st.empty() 
+                
                 with st.form("new_nib", clear_on_submit=True):
                     n_date = st.date_input("Order Date", value=date.today())
                     n_name = st.text_input("Customer/Order Name")
                     n_qty = st.number_input("Quantity", min_value=1, step=1)
-                    
-                    # 2. Added step=50.0
                     n_price = st.number_input("Quoted Price", value=0.0, step=50.0)
                     n_curr = st.selectbox("Currency", ["₺", "$", "€", "£"])
                     
                     if st.form_submit_button("Create Order"):
                         if n_name:
-                            # 3. Capture the fresh data immediately without refreshing the app
                             nib_orders = db.add_nib_order(nib_orders, {
                                 "Date": str(n_date), "Name": n_name, "Quantity": n_qty,
                                 "Status": "In Progress", "Price": n_price, "Currency": n_curr
                             })
-                            st.success("✅ Order Added!")
-                            # Removed st.rerun() here so it doesn't jump tabs!
+                            # Floating popup + Top message
+                            st.toast("Order successfully created!", icon="✅")
+                            msg_box.success("✅ Order Added!")
                         else:
-                            st.error("⚠️ Name is required to place an order.")
+                            # Floating error popup + Top error message
+                            st.toast("Missing Customer Name!", icon="🚨")
+                            msg_box.error("⚠️ Customer Name is required.")
 
             with col_queue:
                 st.subheader("📋 Active Work Queue")
@@ -239,20 +243,24 @@ def main():
                             st.markdown(f"**{row['Name']}** | 📦 Qty: {row['Quantity']}")
                             st.markdown(f"🔴 *In Progress* — Waiting: **{days_waiting} days**")
                             
-                            c_price, c_btn = st.columns([2, 1])
+                            # 2. Custom widths to shrink the input and place currency next to it
+                            c_price, c_sym, c_btn = st.columns([1.5, 0.5, 1])
                             
-                            # 4. Added currency symbol to label & set step=50.0
-                            new_p = c_price.number_input(
-                                f"Final Price ({row['Currency']})", 
-                                value=float(row["Price"]), 
-                                step=50.0, 
-                                key=f"p_{idx}"
-                            )
+                            with c_price:
+                                new_p = st.number_input("Final Price", value=float(row["Price"]), step=50.0, key=f"p_{idx}")
                             
-                            st.write("##") # Invisible spacer to push the button down
-                            if c_btn.button("✅ Mark Completed", key=f"btn_{idx}"):
-                                db.update_nib_order(nib_orders, idx, "Completed", new_p)
-                                st.rerun()
+                            with c_sym:
+                                st.write("##") # Spacers to push the text down to align with the box
+                                st.write("##") 
+                                st.markdown(f"**{row['Currency']}**")
+                            
+                            with c_btn:
+                                st.write("##") # Align button with the input box
+                                if st.button("✅ Mark Completed", key=f"btn_{idx}", use_container_width=True):
+                                    db.update_nib_order(nib_orders, idx, "Completed", new_p)
+                                    st.toast(f"Completed {row['Name']}!", icon="🎉")
+                                    st.rerun()
+                                    
                             st.divider()
 
             st.subheader("✅ Completed Orders")
@@ -354,6 +362,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
