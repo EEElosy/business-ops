@@ -226,7 +226,6 @@ def main():
                             # Floating error popup + Top error message
                             st.toast("Missing Customer Name!", icon="🚨")
                             msg_box.error("⚠️ Customer Name is required.")
-
             with col_queue:
                 st.subheader("📋 Active Work Queue")
                 active_mask = nib_orders["Status"] == "In Progress"
@@ -243,19 +242,18 @@ def main():
                             st.markdown(f"**{row['Name']}** | 📦 Qty: {row['Quantity']}")
                             st.markdown(f"🔴 *In Progress* — Waiting: **{days_waiting} days**")
                             
-                            # 2. Custom widths to shrink the input and place currency next to it
-                            c_price, c_sym, c_btn = st.columns([1.5, 0.5, 1])
+                            # The Fix: Use vertical_alignment="bottom" and specific column widths
+                            # This automatically aligns the bottom of the input box, text, and button.
+                            c_price, c_sym, c_btn = st.columns([2, 0.5, 2], vertical_alignment="bottom")
                             
                             with c_price:
                                 new_p = st.number_input("Final Price", value=float(row["Price"]), step=50.0, key=f"p_{idx}")
                             
                             with c_sym:
-                                st.write("##") # Spacers to push the text down to align with the box
-                                st.write("##") 
+                                # Removed the awful st.write("##") spacers
                                 st.markdown(f"**{row['Currency']}**")
                             
                             with c_btn:
-                                st.write("##") # Align button with the input box
                                 if st.button("✅ Mark Completed", key=f"btn_{idx}", use_container_width=True):
                                     db.update_nib_order(nib_orders, idx, "Completed", new_p)
                                     st.toast(f"Completed {row['Name']}!", icon="🎉")
@@ -362,6 +360,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
