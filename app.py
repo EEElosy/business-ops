@@ -339,7 +339,7 @@ def main():
         with tab_finance:
             st.subheader("Profitability & Operational Volume")
             try:
-                sales_df = db.load_sheet("Sales", ["Selling Price", "Cost Price", "Currency"])
+                sales_df = db.load_sheet("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
                 expense_df = db.load_sheet("Expenses", ["Amount", "Currency"])
                 
                 sales_df["Selling Price"] = pd.to_numeric(sales_df["Selling Price"], errors='coerce').fillna(0)
@@ -361,6 +361,33 @@ def main():
                     v2.metric("Orders (Last 30 Days)", len(orders_30d))
                     v3.metric("Pending Queue", len(nib_orders[nib_orders["Status"] == "In Progress"]))
                 
+                st.divider()
+
+                # --- NEW: PHYSICAL SALES REPORT ---
+                st.write("### 📦 Products Sold")
+                if not sales_df.empty:
+                    sales_df["DateObj"] = pd.to_datetime(sales_df["Date"], errors='coerce')
+                    today = pd.to_datetime(date.today())
+                    
+                    timeframe = st.radio("Select Timeframe", ["Last 7 Days", "Last 30 Days", "All Time"], horizontal=True, label_visibility="collapsed")
+                    
+                    if timeframe == "Last 7 Days":
+                        filtered_sales = sales_df[sales_df["DateObj"] >= (today - timedelta(days=7))].copy()
+                    elif timeframe == "Last 30 Days":
+                        filtered_sales = sales_df[sales_df["DateObj"] >= (today - timedelta(days=30))].copy()
+                    else:
+                        filtered_sales = sales_df.copy()
+                    
+                    if not filtered_sales.empty:
+                        filtered_sales["Gross Margin"] = filtered_sales["Selling Price"] - filtered_sales["Cost Price"]
+                        display_sales = filtered_sales[["Date", "Item Sold", "Selling Price", "Gross Margin", "Currency"]]
+                        
+                        st.dataframe(display_sales, use_container_width=True, hide_index=True)
+                    else:
+                        st.info(f"No physical items sold in the {timeframe.lower()}.")
+                else:
+                    st.info("No sales data available yet.")
+
                 st.divider()
 
                 # FINANCIAL AGGREGATION
@@ -397,19 +424,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
