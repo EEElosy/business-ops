@@ -5,11 +5,10 @@ from datetime import date, datetime, timedelta
 
 st.set_page_config(layout="wide", page_title="Nibworks ✒️")
 
-# --- SIDEBAR CONTROLS ---
+# DELETE THIS ENTIRE SECTION
 with st.sidebar:
     st.write("### System Controls")
     if st.button("🔄 Force Sync Data", use_container_width=True):
-        # This instantly wipes the RAM and the cache, forcing a fresh download
         st.session_state.clear()
         st.cache_data.clear()
         st.rerun()
@@ -133,7 +132,16 @@ class DbManager:
 # --- MAIN APP ---
 def main():
     if check_password():
-        st.title("Nibworks ERP ✒️")
+        # --- MAIN HEADER & REFRESH BUTTON ---
+        col_title, col_sync = st.columns([4, 1])
+        with col_title:
+            st.title("Nibworks ERP ✒️")
+        with col_sync:
+            st.write("") # Vertically aligns the button with the title font
+            if st.button("🔄 Refresh Data", use_container_width=True):
+                st.cache_data.clear()
+                st.rerun()
+
         db = DbManager()
         
         try:
@@ -430,6 +438,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
