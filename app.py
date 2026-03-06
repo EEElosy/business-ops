@@ -5,6 +5,15 @@ from datetime import date, datetime, timedelta
 
 st.set_page_config(layout="wide", page_title="Nibworks ✒️")
 
+# --- SIDEBAR CONTROLS ---
+with st.sidebar:
+    st.write("### System Controls")
+    if st.button("🔄 Force Sync Data", use_container_width=True):
+        # This instantly wipes the RAM and the cache, forcing a fresh download
+        st.session_state.clear()
+        st.cache_data.clear()
+        st.rerun()
+
 # --- CUSTOM CSS INJECTION ---
 st.markdown("""
     <style>
@@ -421,6 +430,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
