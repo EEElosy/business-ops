@@ -336,8 +336,8 @@ def main():
         with tab_finance:
             st.subheader("Profitability & Operational Volume")
             try:
-                sales_df = db.load_sheet("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
-                expense_df = db.load_sheet("Expenses", ["Amount", "Currency"])
+                sales_df = db._get_sheet_from_memory("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
+                expense_df = db._get_sheet_from_memory("Expenses", ["Amount", "Currency"])
                 
                 sales_df["Selling Price"] = pd.to_numeric(sales_df["Selling Price"], errors='coerce').fillna(0)
                 sales_df["Cost Price"] = pd.to_numeric(sales_df["Cost Price"], errors='coerce').fillna(0)
@@ -421,6 +421,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
