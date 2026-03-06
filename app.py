@@ -5,6 +5,23 @@ from datetime import date, datetime, timedelta
 
 st.set_page_config(layout="wide", page_title="Nibworks ✒️")
 
+# --- CUSTOM CSS INJECTION ---
+st.markdown("""
+    <style>
+    /* Target ONLY primary buttons */
+    button[kind="primary"] {
+        background-color: #93F59A !important;
+        color: #111111 !important; /* Dark text so you can read it */
+        border: 1px solid #93F59A !important;
+    }
+    /* Add a slight darkening effect when you hover over it */
+    button[kind="primary"]:hover {
+        background-color: #7ce084 !important;
+        border: 1px solid #7ce084 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # --- AUTHENTICATION ---
 def check_password():
     if "password_correct" not in st.session_state:
@@ -380,6 +397,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
