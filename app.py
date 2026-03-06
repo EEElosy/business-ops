@@ -73,6 +73,7 @@ class DbManager:
 
     def update_sheet(self, sheet_name, dataframe):
         self.conn.update(worksheet=sheet_name, data=dataframe)
+        st.cache_data.clear()
         
     # --- NIB ORDER ACTIONS ---
     def add_nib_order(self, df, order_data):
@@ -424,6 +425,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
