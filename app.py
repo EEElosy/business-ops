@@ -124,17 +124,26 @@ class DbManager:
 # --- MAIN APP ---
 def main():
     if check_password():
-        # --- MAIN HEADER & REFRESH BUTTON ---
+        # --- MAIN HEADER & SMART REFRESH BUTTON ---
         col_title, col_sync = st.columns([4, 1])
         with col_title:
             st.title("Nibworks ERP ✒️")
         with col_sync:
-            st.write("") # Vertically aligns the button with the title font
+            st.write("") 
             if st.button("🔄 Refresh Data", use_container_width=True):
-                # Bulletproof wipe: clears RAM and Server Cache
-                st.session_state.clear()
-                st.cache_data.clear()
-                st.rerun()
+                # 1. Anti-Spam Cooldown Logic
+                current_time = time.time()
+                last_refresh = st.session_state.get("last_refresh", 0)
+                
+                if current_time - last_refresh < 60:
+                    # Blocks the refresh and warns the user
+                    st.toast("⏳ Please wait 60 seconds between manual refreshes to protect the database.", icon="⚠️")
+                else:
+                    # 2. Safe Refresh Logic
+                    st.session_state["last_refresh"] = current_time
+                    # We ONLY clear the data cache now, leaving your password state perfectly safe!
+                    st.cache_data.clear() 
+                    st.rerun()
 
         db = DbManager()
         
@@ -432,6 +441,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
