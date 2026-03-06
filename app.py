@@ -219,7 +219,7 @@ def main():
                 with st.form("expense_form"):
                     cat = st.selectbox("Category", ["Shipment", "Taxi", "Food & Beverages", "Salary", "Debt", "Inventory Purchase", "Other"])
                     e_col1, e_col2 = st.columns([2, 1])
-                    amt = e_col1.number_input("Amount", min_value=0.0)
+                    amt = e_col1.number_input("Amount", min_value=0.0, step=50.0)
                     curr = e_col2.selectbox("Currency", ["₺", "$", "€", "£"])
                     note = st.text_input("Note")
                     
@@ -421,6 +421,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
