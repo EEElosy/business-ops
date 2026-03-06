@@ -44,20 +44,23 @@ class DbManager:
     def __init__(self):
         self.conn = st.connection("gsheets", type=GSheetsConnection)
 
-    def load_sheet(self, sheet_name, required_cols):
-        df = self.conn.read(worksheet=sheet_name, ttl=600)
+    def _get_sheet_from_memory(self, sheet_name, required_cols):
+        state_key = f"db_{sheet_name}"
+        if state_key not in st.session_state:
+            df = self.conn.read(worksheet=sheet_name, ttl=600)
+            st.session_state[state_key] = df
+            
+        df = st.session_state[state_key]
         for col in required_cols:
             if col not in df.columns: df[col] = ""
         return df
-        
+
+    def _save_sheet_to_memory_and_google(self, sheet_name, df):
+        st.session_state[f"db_{sheet_name}"] = df
+        self.conn.update(worksheet=sheet_name, data=df)
+
     def load_inventory(self):
-        df = self.conn.read(worksheet="Inventory", ttl=0)
-        
-        # UPGRADED: Added "Type" logically before "Brand"
-        required_cols = ["Date", "Type", "Brand", "Model", "Color", "Details", 
-                         "Purchase Price", "Target Price", "Stock", "Supplier", "Currency"]
-        for col in required_cols:
-            if col not in df.columns: df[col] = ""
+        df = self._get_sheet_from_memory("Inventory", ["Date", "Type", "Brand", "Model", "Color", "Details", "Purchase Price", "Target Price", "Stock", "Supplier", "Currency"])
         df["Stock"] = pd.to_numeric(df["Stock"], errors='coerce').fillna(0)
         df["Purchase Price"] = pd.to_numeric(df["Purchase Price"], errors='coerce').fillna(0.0)
         df["Target Price"] = pd.to_numeric(df["Target Price"], errors='coerce').fillna(0.0)
@@ -65,28 +68,27 @@ class DbManager:
         return df
 
     def load_nib_orders(self):
-        df = self.load_sheet("Nib Orders", ["Date", "Name", "Quantity", "Status", "Price", "Currency"])
+        df = self._get_sheet_from_memory("Nib Orders", ["Date", "Name", "Quantity", "Status", "Price", "Currency"])
         df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce').fillna(1)
         df["Price"] = pd.to_numeric(df["Price"], errors='coerce').fillna(0.0)
         if "Currency" not in df.columns: df["Currency"] = "$"
         return df
 
-    def update_sheet(self, sheet_name, dataframe):
-        self.conn.update(worksheet=sheet_name, data=dataframe)
-        st.cache_data.clear()
-        
-    # --- NIB ORDER ACTIONS ---
+    def add_inventory_item(self, df, item_data):
+        updated_df = pd.concat([df, pd.DataFrame([item_data])], ignore_index=True)
+        self._save_sheet_to_memory_and_google("Inventory", updated_df)
+        return updated_df
+
     def add_nib_order(self, df, order_data):
         updated_df = pd.concat([df, pd.DataFrame([order_data])], ignore_index=True)
-        self.update_sheet("Nib Orders", updated_df)
-        return updated_df # <--- Added this return statement!
+        self._save_sheet_to_memory_and_google("Nib Orders", updated_df)
+        return updated_df 
 
     def update_nib_order(self, df, index, new_status, new_price):
         df.loc[index, "Status"] = new_status
         df.loc[index, "Price"] = float(new_price)
-        self.update_sheet("Nib Orders", df)
+        self._save_sheet_to_memory_and_google("Nib Orders", df)
 
-    # --- STANDARD TRANSACTION LOGIC ---
     def register_sale(self, inventory_df, row_index, final_selling_price, sales_currency, exchange_rate):
         brand = inventory_df.loc[row_index, 'Brand']
         model = inventory_df.loc[row_index, 'Model']
@@ -99,12 +101,9 @@ class DbManager:
         if current_stock < 1: return False, "❌ Out of Stock!"
 
         inventory_df.loc[row_index, "Stock"] = current_stock - 1
-        self.update_sheet("Inventory", inventory_df)
+        self._save_sheet_to_memory_and_google("Inventory", inventory_df)
 
-        try:
-            sales_data = self.conn.read(worksheet="Sales", ttl=600)
-        except:
-            sales_data = pd.DataFrame(columns=["Date", "Item Sold", "Quantity", "Selling Price", "Currency", "Cost Price", "Exchange Rate"])
+        sales_data = self._get_sheet_from_memory("Sales", ["Date", "Item Sold", "Quantity", "Selling Price", "Currency", "Cost Price", "Exchange Rate"])
 
         new_sale = {
             "Date": str(date.today()), "Item Sold": item_name, "Quantity": 1,
@@ -112,17 +111,14 @@ class DbManager:
             "Cost Price": normalized_cost, "Exchange Rate": exchange_rate
         }
         updated_sales = pd.concat([sales_data, pd.DataFrame([new_sale])], ignore_index=True)
-        self.update_sheet("Sales", updated_sales)
+        self._save_sheet_to_memory_and_google("Sales", updated_sales)
         return True, f"✅ Sold {item_name} for {final_selling_price} {sales_currency}!"
 
     def log_expense(self, category, amount, currency, notes):
-        try:
-            exp_data = self.conn.read(worksheet="Expenses", ttl=600)
-        except:
-            exp_data = pd.DataFrame(columns=["Date", "Category", "Amount", "Currency", "Notes"])
+        exp_data = self._get_sheet_from_memory("Expenses", ["Date", "Category", "Amount", "Currency", "Notes"])
         new_expense = {"Date": str(date.today()), "Category": category, "Amount": float(amount), "Currency": currency, "Notes": notes}
         updated_exp = pd.concat([exp_data, pd.DataFrame([new_expense])], ignore_index=True)
-        self.update_sheet("Expenses", updated_exp)
+        self._save_sheet_to_memory_and_google("Expenses", updated_exp)
         return True
 
 # --- MAIN APP ---
@@ -425,6 +421,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
