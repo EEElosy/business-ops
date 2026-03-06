@@ -132,14 +132,7 @@ def main():
         with col_sync:
             st.write("") 
             if st.button("🔄 Refresh Data", use_container_width=True):
-                # 1. Anti-Spam Cooldown Logic
-                current_time = time.time()
-                last_refresh = st.session_state.get("last_refresh", 0)
-                
-                if current_time - last_refresh < 60:
-                    # Blocks the refresh and warns the user
-                    st.toast("⏳ Please wait 60 seconds between manual refreshes to protect the database.", icon="⚠️")
-                if st.button("🔄 Refresh Data", use_container_width=True):
+                # NOTICE: Everything below the 'if' is indented with 4 extra spaces!
                 current_time = time.time()
                 last_refresh = st.session_state.get("last_refresh", 0)
                 
@@ -149,7 +142,6 @@ def main():
                     st.session_state["last_refresh"] = current_time
                     
                     # --- SURGICAL WIPE ---
-                    # Loop through all saved RAM. Delete the database files, but keep passwords safe!
                     for key in list(st.session_state.keys()):
                         if "password" not in key.lower() and key != "last_refresh":
                             del st.session_state[key]
@@ -453,6 +445,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
