@@ -5,14 +5,6 @@ from datetime import date, datetime, timedelta
 
 st.set_page_config(layout="wide", page_title="Nibworks ✒️")
 
-# DELETE THIS ENTIRE SECTION
-with st.sidebar:
-    st.write("### System Controls")
-    if st.button("🔄 Force Sync Data", use_container_width=True):
-        st.session_state.clear()
-        st.cache_data.clear()
-        st.rerun()
-
 # --- CUSTOM CSS INJECTION ---
 st.markdown("""
     <style>
@@ -139,6 +131,8 @@ def main():
         with col_sync:
             st.write("") # Vertically aligns the button with the title font
             if st.button("🔄 Refresh Data", use_container_width=True):
+                # Bulletproof wipe: clears RAM and Server Cache
+                st.session_state.clear()
                 st.cache_data.clear()
                 st.rerun()
 
@@ -438,6 +432,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
