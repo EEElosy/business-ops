@@ -32,9 +32,15 @@ class DbManager:
         for col in required_cols:
             if col not in df.columns: df[col] = ""
         return df
-
+        
     def load_inventory(self):
-        df = self.load_sheet("Inventory", ["Date", "Brand", "Model", "Color", "Details", "Purchase Price", "Target Price", "Stock", "Supplier", "Currency"])
+        df = self.conn.read(worksheet="Inventory", ttl=0)
+        
+        # UPGRADED: Added "Type" logically before "Brand"
+        required_cols = ["Date", "Type", "Brand", "Model", "Color", "Details", 
+                         "Purchase Price", "Target Price", "Stock", "Supplier", "Currency"]
+        for col in required_cols:
+            if col not in df.columns: df[col] = ""
         df["Stock"] = pd.to_numeric(df["Stock"], errors='coerce').fillna(0)
         df["Purchase Price"] = pd.to_numeric(df["Purchase Price"], errors='coerce').fillna(0.0)
         df["Target Price"] = pd.to_numeric(df["Target Price"], errors='coerce').fillna(0.0)
@@ -128,7 +134,8 @@ def main():
                     term = search.lower()
                     mask = (
                         inventory["Brand"].astype(str).str.lower().str.contains(term) |
-                        inventory["Model"].astype(str).str.lower().str.contains(term)
+                        inventory["Model"].astype(str).str.lower().str.contains(term) |
+                        inventory["Type"].astype(str).str.lower().str.contains(term) # <-- Added Type Search
                     )
                     results = inventory[mask]
                 else:
@@ -269,11 +276,13 @@ def main():
         with tab_inv:
             st.subheader("Current Stock")
             st.dataframe(inventory, use_container_width=True)
-            
+
             with st.expander("➕ Add New Inventory"):
-                with st.form("add_inv"):
-                    c_date, c_brand, c_model = st.columns(3)
+                with st.form("add_inv", clear_on_submit=True):
+                    # Row 1: Type is now placed before Brand
+                    c_date, c_type, c_brand, c_model = st.columns(4)
                     d = c_date.date_input("Date", value=date.today())
+                    item_type = c_type.selectbox("Type", ["Fountain Pen", "Ink", "Nib", "Notebook", "Accessory", "Other"])
                     b = c_brand.text_input("Brand")
                     m = c_model.text_input("Model")
                     
@@ -290,12 +299,12 @@ def main():
                     
                     if st.form_submit_button("Save Item"):
                         new_item = {
-                            "Date":str(d), "Brand":b, "Model":m, "Color":color, "Details":det,
+                            "Date":str(d), "Type": item_type, "Brand":b, "Model":m, "Color":color, "Details":det,
                             "Purchase Price":cost_p, "Target Price":targ_p, 
                             "Stock":stk, "Supplier":sup, "Currency":cur
                         }
                         db.add_inventory_item(inventory, new_item)
-                        st.success(f"Added {b} {m}!")
+                        st.success(f"Added {b} {m} ({item_type})!")
                         st.rerun()
 
         # --- TAB 4: REAL PROFIT & ANALYTICS ---
@@ -360,6 +369,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
