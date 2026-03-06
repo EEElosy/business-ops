@@ -128,24 +128,46 @@ def main():
             
             with c1:
                 st.subheader("🛒 Transaction")
-                search = st.text_input("Find Item", placeholder="Search Brand, Model...")
+                search = st.text_input("Find Item", placeholder="Search Brand, Model, Type, Color... (e.g. 'montblanc blue ink')")
                 
+                # --- UPGRADED: Tokenized Multi-Word Search Engine ---
                 if search:
-                    term = search.lower()
-                    mask = (
-                        inventory["Brand"].astype(str).str.lower().str.contains(term) |
-                        inventory["Model"].astype(str).str.lower().str.contains(term) |
-                        inventory["Type"].astype(str).str.lower().str.contains(term) # <-- Added Type Search
-                    )
+                    # 1. Create a combined text corpus for each row to search against
+                    search_corpus = (
+                        inventory["Brand"].astype(str) + " " +
+                        inventory["Model"].astype(str) + " " +
+                        inventory["Type"].astype(str) + " " +
+                        inventory["Color"].astype(str)
+                    ).str.lower()
+                    
+                    # 2. Split the query into individual words
+                    search_words = search.lower().split()
+                    
+                    # 3. Apply iterative AND filtering (row must contain ALL typed words)
+                    mask = pd.Series([True] * len(inventory))
+                    for word in search_words:
+                        mask = mask & search_corpus.str.contains(word, na=False)
+                        
                     results = inventory[mask]
                 else:
                     results = inventory
 
                 if not results.empty:
                     options = results.index.tolist()
+                    
+                    # --- UPGRADED: Dynamic Label Formatter ---
                     def labeler(i):
                         row = results.loc[i]
-                        return f"{row['Brand']} {row['Model']} ({row['Color']})"
+                        
+                        # Filter out 'nan' strings and empty spaces
+                        raw_color = str(row['Color']).strip()
+                        if raw_color.lower() != 'nan' and raw_color != '':
+                            color_display = f" ({raw_color})"
+                        else:
+                            color_display = ""
+                            
+                        # Format: [Type] Brand Model (Color if exists)
+                        return f"[{row['Type']}] {row['Brand']} {row['Model']}{color_display}"
                     
                     selected_idx = st.selectbox("Select Item", options, format_func=labeler)
                     
@@ -157,7 +179,7 @@ def main():
 
                     st.info(f"📊 **Original Cost:** {cost} {item_currency} | **Target:** {target} {item_currency}")
                     
-                    # 1. Price & Currency Input
+                    # 1. Price & Currency Input (Preserving your custom currency array)
                     col_p, col_c = st.columns([2, 1])
                     final_price = col_p.number_input("Final Agreed Price", value=target)
                     sales_curr = col_c.selectbox("Sales Currency", ["₺", "$", "€", "£"], index=["₺", "$", "€", "£"].index(item_currency) if item_currency in ["₺", "$", "€", "£"] else 0)
@@ -192,6 +214,7 @@ def main():
             with c2:
                 st.subheader("💸 Log Expense")
                 with st.form("expense_form"):
+                    # Preserving your custom expense categories
                     cat = st.selectbox("Category", ["Shipment", "Taxi", "Food & Beverages", "Salary", "Debt", "Inventory Purchase", "Other"])
                     e_col1, e_col2 = st.columns([2, 1])
                     amt = e_col1.number_input("Amount", min_value=0.0)
@@ -369,6 +392,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
