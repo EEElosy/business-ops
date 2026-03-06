@@ -160,7 +160,7 @@ def main():
                             color_display = f" ({raw_color})"
                         else:
                             color_display = ""
-                        return f"[{row['Type']}] {row['Brand']} {row['Model']}{color_display}"
+                        return f"{row['Type']} | {row['Brand']} {row['Model']}{color_display}"
                     
                     selected_idx = st.selectbox("Select Item", options, format_func=labeler)
                     
@@ -380,6 +380,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
