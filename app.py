@@ -139,10 +139,21 @@ def main():
                 if current_time - last_refresh < 60:
                     # Blocks the refresh and warns the user
                     st.toast("⏳ Please wait 60 seconds between manual refreshes to protect the database.", icon="⚠️")
+                if st.button("🔄 Refresh Data", use_container_width=True):
+                current_time = time.time()
+                last_refresh = st.session_state.get("last_refresh", 0)
+                
+                if current_time - last_refresh < 60:
+                    st.toast("⏳ Please wait 60 seconds between manual refreshes to protect the database.", icon="⚠️")
                 else:
-                    # 2. Safe Refresh Logic
                     st.session_state["last_refresh"] = current_time
-                    # We ONLY clear the data cache now, leaving your password state perfectly safe!
+                    
+                    # --- SURGICAL WIPE ---
+                    # Loop through all saved RAM. Delete the database files, but keep passwords safe!
+                    for key in list(st.session_state.keys()):
+                        if "password" not in key.lower() and key != "last_refresh":
+                            del st.session_state[key]
+                            
                     st.cache_data.clear() 
                     st.rerun()
 
@@ -442,6 +453,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
