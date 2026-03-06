@@ -45,7 +45,7 @@ class DbManager:
         self.conn = st.connection("gsheets", type=GSheetsConnection)
 
     def load_sheet(self, sheet_name, required_cols):
-        df = self.conn.read(worksheet=sheet_name, ttl=0)
+        df = self.conn.read(worksheet=sheet_name, ttl=600)
         for col in required_cols:
             if col not in df.columns: df[col] = ""
         return df
@@ -102,7 +102,7 @@ class DbManager:
         self.update_sheet("Inventory", inventory_df)
 
         try:
-            sales_data = self.conn.read(worksheet="Sales", ttl=0)
+            sales_data = self.conn.read(worksheet="Sales", ttl=600)
         except:
             sales_data = pd.DataFrame(columns=["Date", "Item Sold", "Quantity", "Selling Price", "Currency", "Cost Price", "Exchange Rate"])
 
@@ -117,7 +117,7 @@ class DbManager:
 
     def log_expense(self, category, amount, currency, notes):
         try:
-            exp_data = self.conn.read(worksheet="Expenses", ttl=0)
+            exp_data = self.conn.read(worksheet="Expenses", ttl=600)
         except:
             exp_data = pd.DataFrame(columns=["Date", "Category", "Amount", "Currency", "Notes"])
         new_expense = {"Date": str(date.today()), "Category": category, "Amount": float(amount), "Currency": currency, "Notes": notes}
@@ -425,6 +425,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
