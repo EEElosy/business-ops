@@ -461,7 +461,8 @@ def main():
                 st.divider()
 
                 # --- SECTION 3: SIDE-BY-SIDE PIE CHARTS ---
-                st.write("#### 🍩 Monthly Breakdown")
+                current_month_name = now.strftime("%B")
+                st.write(f"#### 🍩 {current_month_name} Breakdown")
                 chart_col1, chart_col2 = st.columns(2)
                 
                 with chart_col1:
@@ -548,6 +549,7 @@ def main():
                 st.error(f"Financials waiting for data... ({e})")
 if __name__ == "__main__":
     main()
+
 
 
 
