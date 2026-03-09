@@ -31,7 +31,7 @@ def check_password():
         st.session_state["password_correct"] = False
     
     def password_entered():
-        if st.session_state["password"] == st.secrets["passwords"]["admin_password"]:
+        if st.session_state.get("password", "") == st.secrets["passwords"]["admin_password"]:
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
@@ -515,6 +515,7 @@ def main():
                 st.error(f"Financials waiting for data... ({e})")
 if __name__ == "__main__":
     main()
+
 
 
 
