@@ -356,25 +356,68 @@ def main():
                         st.rerun()
             st.subheader("Current Stock")
             st.dataframe(inventory, use_container_width=True)
-
+            
         # --- TAB 4: REAL PROFIT & ANALYTICS ---
         with tab_finance:
-            st.subheader("Profitability & Operational Volume")
+            st.header("📊 Financial Analytics")
             try:
-                sales_df = db._get_sheet_from_memory("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
-                expense_df = db._get_sheet_from_memory("Expenses", ["Amount", "Currency"])
+                # 1. Load Data (Corrected to use load_sheet)
+                sales_df = db.load_sheet("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
+                expense_df = db.load_sheet("Expenses", ["Amount", "Category", "Currency", "Date"])
                 
+                # 2. Clean Data for Math
+                sales_df["DateObj"] = pd.to_datetime(sales_df["Date"], errors='coerce')
+                expense_df["DateObj"] = pd.to_datetime(expense_df["Date"], errors='coerce')
                 sales_df["Selling Price"] = pd.to_numeric(sales_df["Selling Price"], errors='coerce').fillna(0)
                 sales_df["Cost Price"] = pd.to_numeric(sales_df["Cost Price"], errors='coerce').fillna(0)
                 expense_df["Amount"] = pd.to_numeric(expense_df["Amount"], errors='coerce').fillna(0)
 
-                # NIB ORDER VOLUME ANALYTICS
+                # 3. Setup Time Filters
+                now = pd.Timestamp.now()
+                seven_days_ago = now - pd.Timedelta(days=7)
+                
+                this_month_sales = sales_df[sales_df["DateObj"].dt.month == now.month]
+                week_sales = sales_df[sales_df["DateObj"] >= seven_days_ago]
+                
+                this_month_exp = expense_df[expense_df["DateObj"].dt.month == now.month]
+                week_exp = expense_df[expense_df["DateObj"] >= seven_days_ago]
+
+                # --- NEW: REVENUE & EXPENSE OVERVIEW ---
+                st.write("### 💵 Revenue & Expense Overview")
+                r1, r2, r3 = st.columns(3)
+                r1.metric("All-Time Revenue", f"{sales_df['Selling Price'].sum():,.2f}")
+                r2.metric("This Month Revenue", f"{this_month_sales['Selling Price'].sum():,.2f}")
+                r3.metric("Last 7 Days Revenue", f"{week_sales['Selling Price'].sum():,.2f}")
+
+                e1, e2, e3 = st.columns(3)
+                e1.metric("All-Time Expenses", f"{expense_df['Amount'].sum():,.2f}")
+                e2.metric("This Month Expenses", f"{this_month_exp['Amount'].sum():,.2f}")
+                e3.metric("Last 7 Days Expenses", f"{week_exp['Amount'].sum():,.2f}")
+
+                st.divider()
+
+                # --- NEW: EXPENSE PIE CHART ---
+                st.write("### 🍩 This Month's Expense Breakdown")
+                if not this_month_exp.empty:
+                    # Group expenses by Category
+                    pie_data = this_month_exp.groupby("Category")["Amount"].sum().reset_index()
+                    fig = px.pie(
+                        pie_data, values='Amount', names='Category', hole=0.4, 
+                        color_discrete_sequence=px.colors.sequential.RdBu
+                    )
+                    fig.update_traces(textposition='inside', textinfo='percent+label')
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No expenses logged yet for this month. Great job! 🎉")
+
+                st.divider()
+
+                # --- ORIGINAL: NIB SERVICE VOLUME ---
                 st.write("### ✒️ Nib Service Volume")
                 if not nib_orders.empty:
                     nib_orders["DateObj"] = pd.to_datetime(nib_orders["Date"], errors='coerce')
                     today = pd.to_datetime(date.today())
                     
-                    # Filtering operations via timedelta
                     orders_7d = nib_orders[nib_orders["DateObj"] >= (today - timedelta(days=7))]
                     orders_30d = nib_orders[nib_orders["DateObj"] >= (today - timedelta(days=30))]
                     
@@ -385,51 +428,22 @@ def main():
                 
                 st.divider()
 
-                # --- NEW: PHYSICAL SALES REPORT ---
-                st.write("### 📦 Products Sold")
-                if not sales_df.empty:
-                    sales_df["DateObj"] = pd.to_datetime(sales_df["Date"], errors='coerce')
-                    today = pd.to_datetime(date.today())
-                    
-                    timeframe = st.radio("Select Timeframe", ["Last 7 Days", "Last 30 Days", "All Time"], horizontal=True, label_visibility="collapsed")
-                    
-                    if timeframe == "Last 7 Days":
-                        filtered_sales = sales_df[sales_df["DateObj"] >= (today - timedelta(days=7))].copy()
-                    elif timeframe == "Last 30 Days":
-                        filtered_sales = sales_df[sales_df["DateObj"] >= (today - timedelta(days=30))].copy()
-                    else:
-                        filtered_sales = sales_df.copy()
-                    
-                    if not filtered_sales.empty:
-                        filtered_sales["Gross Margin"] = filtered_sales["Selling Price"] - filtered_sales["Cost Price"]
-                        display_sales = filtered_sales[["Date", "Item Sold", "Selling Price", "Gross Margin", "Currency"]]
-                        
-                        st.dataframe(display_sales, use_container_width=True, hide_index=True)
-                    else:
-                        st.info(f"No physical items sold in the {timeframe.lower()}.")
-                else:
-                    st.info("No sales data available yet.")
-
-                st.divider()
-
-                # FINANCIAL AGGREGATION
+                # --- ORIGINAL: CONSOLIDATED PROFIT ---
                 st.write("### 💰 Consolidated Profit by Currency")
                 completed_nibs = nib_orders[nib_orders["Status"] == "Completed"]
                 
                 all_currencies = set(sales_df["Currency"].unique()) | set(expense_df["Currency"].unique()) | set(completed_nibs["Currency"].unique())
-                all_currencies.discard("") # Remove empty strings if present
+                all_currencies.discard("") 
                 
                 if not all_currencies:
                     st.info("No financial data yet.")
                 else:
                     cols = st.columns(len(all_currencies))
                     for i, currency in enumerate(all_currencies):
-                        # Revenue streams
                         product_rev = sales_df[sales_df["Currency"] == currency]["Selling Price"].sum()
                         service_rev = completed_nibs[completed_nibs["Currency"] == currency]["Price"].sum()
                         total_rev = product_rev + service_rev
                         
-                        # Costs
                         cogs = sales_df[sales_df["Currency"] == currency]["Cost Price"].sum()
                         exp = expense_df[expense_df["Currency"] == currency]["Amount"].sum()
                         
@@ -438,14 +452,15 @@ def main():
                         with cols[i]:
                             st.metric(
                                 f"Net Profit ({currency})", f"{net_profit:,.2f}", 
-                                delta=f"Rev: {total_rev} (Prod: {product_rev}, Serv: {service_rev}) | Cost/Exp: {cogs + exp}"
+                                delta=f"Rev: {total_rev} | Cost/Exp: {cogs + exp}"
                             )
 
             except Exception as e:
-                st.info(f"Financials waiting for data... ({e})")
+                st.error(f"Financials waiting for data... ({e})")
 
 if __name__ == "__main__":
     main()
+
 
 
 
