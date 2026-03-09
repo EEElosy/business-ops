@@ -359,13 +359,15 @@ def main():
     
         # --- TAB 4: REAL PROFIT & ANALYTICS ---
         with tab_finance:
-            st.header("📊 Financial Analytics")
+            # 1. Made the main title smaller (subheader instead of header)
+            st.subheader("📊 Financial Analytics") 
             try:
-                # 1. Load Data
+                # Load Data
                 sales_df = db._get_sheet_from_memory("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
                 expense_df = db._get_sheet_from_memory("Expenses", ["Amount", "Category", "Currency", "Date"])
+                inv_df = db._get_sheet_from_memory("Inventory", ["Type", "Brand", "Model"]) # Added to look up item types!
                 
-                # 2. Clean Data & Convert Types
+                # Clean Data & Convert Types
                 sales_df["DateObj"] = pd.to_datetime(sales_df["Date"], errors='coerce')
                 expense_df["DateObj"] = pd.to_datetime(expense_df["Date"], errors='coerce')
                 
@@ -373,7 +375,7 @@ def main():
                 sales_df["Cost Price"] = pd.to_numeric(sales_df["Cost Price"], errors='coerce').fillna(0)
                 expense_df["Amount"] = pd.to_numeric(expense_df["Amount"], errors='coerce').fillna(0)
 
-                # Prep Nib Orders for math
+                # Prep Nib Orders
                 if not nib_orders.empty:
                     nib_orders["DateObj"] = pd.to_datetime(nib_orders["Date"], errors='coerce')
                     nib_orders["Price"] = pd.to_numeric(nib_orders["Price"], errors='coerce').fillna(0)
@@ -382,7 +384,7 @@ def main():
                     nib_orders["Price"] = pd.Series(dtype='float64')
                     nib_orders["Status"] = pd.Series(dtype='object')
 
-                # 3. Setup Time Filters
+                # Setup Time Filters
                 now = pd.Timestamp.now()
                 seven_days_ago = now - pd.Timedelta(days=7)
                 
@@ -397,9 +399,8 @@ def main():
                 week_nibs = completed_nibs[completed_nibs["DateObj"] >= seven_days_ago]
 
                 # --- SECTION 1: NET PROFIT ---
-                st.write("### 💰 Net Profit")
+                st.write("#### 💰 Net Profit")
                 
-                # Helper function to calculate profit: (Sales Rev + Nib Rev) - (COGS + Expenses)
                 def calc_profit(s_df, e_df, n_df):
                     rev = s_df["Selling Price"].sum() + n_df["Price"].sum()
                     costs = s_df["Cost Price"].sum() + e_df["Amount"].sum()
@@ -413,7 +414,7 @@ def main():
                 st.divider()
 
                 # --- SECTION 2: NIB SERVICE VOLUME ---
-                st.write("### ✒️ Nib Service Volume")
+                st.write("#### ✒️ Nib Service Volume")
                 if not nib_orders.empty:
                     orders_7d = nib_orders[nib_orders["DateObj"] >= seven_days_ago]
                     orders_30d = nib_orders[nib_orders["DateObj"] >= (now - pd.Timedelta(days=30))]
@@ -428,7 +429,7 @@ def main():
                 st.divider()
 
                 # --- SECTION 3: SIDE-BY-SIDE PIE CHARTS ---
-                st.write("### 🍩 This Month's Breakdown")
+                st.write("#### 🍩 Monthly Breakdown")
                 chart_col1, chart_col2 = st.columns(2)
                 
                 with chart_col1:
@@ -445,34 +446,54 @@ def main():
                         st.info("No expenses logged this month.")
 
                 with chart_col2:
-                    st.write("**Revenue by Item**")
-                    if not month_sales.empty:
-                        # Groups revenue by the specific item sold
-                        rev_pie_data = month_sales.groupby("Item Sold")["Selling Price"].sum().reset_index()
+                    st.write("**Revenue by Category**")
+                    # Dynamically map the specific items sold to their general "Type" from the Inventory sheet
+                    inv_df["Item Key"] = inv_df["Brand"] + " " + inv_df["Model"]
+                    type_mapping = dict(zip(inv_df["Item Key"], inv_df["Type"]))
+                    
+                    if not month_sales.empty or not month_nibs.empty:
+                        # 1. Process Physical Sales Categories
+                        month_sales_chart = month_sales.copy()
+                        if not month_sales_chart.empty:
+                            month_sales_chart["Category"] = month_sales_chart["Item Sold"].map(type_mapping).fillna("Other Goods")
+                            rev_pie_data = month_sales_chart.groupby("Category")["Selling Price"].sum().reset_index()
+                            rev_pie_data.rename(columns={"Selling Price": "Amount"}, inplace=True)
+                        else:
+                            rev_pie_data = pd.DataFrame(columns=["Category", "Amount"])
+
+                        # 2. Inject Nib Services into the same chart
+                        nib_rev = month_nibs["Price"].sum()
+                        if nib_rev > 0:
+                            nib_row = pd.DataFrame([{"Category": "Nib Services", "Amount": nib_rev}])
+                            rev_pie_data = pd.concat([rev_pie_data, nib_row], ignore_index=True)
+
                         fig_rev = px.pie(
-                            rev_pie_data, values='Selling Price', names='Item Sold', hole=0.4, 
+                            rev_pie_data, values='Amount', names='Category', hole=0.4, 
                             color_discrete_sequence=px.colors.sequential.Tealgrn
                         )
                         fig_rev.update_traces(textposition='inside', textinfo='percent+label')
                         st.plotly_chart(fig_rev, use_container_width=True)
                     else:
-                        st.info("No physical sales logged this month.")
+                        st.info("No revenue logged this month.")
 
                 st.divider()
 
-                # --- SECTION 4: NUMERICAL REVENUE & EXPENSES ---
-                st.write("### 📈 Revenue & Expense Details")
-                
-                # Combine physical sales and completed nib services for total revenue
+                # Aggregate totals for the separate numerical blocks
                 total_rev = sales_df['Selling Price'].sum() + completed_nibs['Price'].sum()
                 month_rev = month_sales['Selling Price'].sum() + month_nibs['Price'].sum()
                 week_rev = week_sales['Selling Price'].sum() + week_nibs['Price'].sum()
 
+                # --- SECTION 4: REVENUE NUMERICALS ---
+                st.write("#### 📈 Revenue Details")
                 r1, r2, r3 = st.columns(3)
                 r1.metric("All-Time Revenue", f"{total_rev:,.2f}")
                 r2.metric("This Month Revenue", f"{month_rev:,.2f}")
                 r3.metric("Last 7 Days Revenue", f"{week_rev:,.2f}")
 
+                st.write("") # Adds a tiny spacer
+
+                # --- SECTION 5: EXPENSE NUMERICALS ---
+                st.write("#### 📉 Expense Details")
                 e1, e2, e3 = st.columns(3)
                 e1.metric("All-Time Expenses", f"{expense_df['Amount'].sum():,.2f}")
                 e2.metric("This Month Expenses", f"{month_exp['Amount'].sum():,.2f}")
@@ -480,9 +501,9 @@ def main():
 
             except Exception as e:
                 st.error(f"Financials waiting for data... ({e})")
-
 if __name__ == "__main__":
     main()
+
 
 
 
