@@ -78,8 +78,13 @@ class DbManager:
         return df
 
     def add_inventory_item(self, df, item_data):
-        updated_df = pd.concat([df, pd.DataFrame([item_data])], ignore_index=True)
-        self._save_sheet_to_memory_and_google("Inventory", updated_df)
+        # 1. FORCE LIVE READ: 0-second cache ensures we never overwrite someone else's recent entry
+        st.cache_data.clear()
+        live_df = self.conn.read(worksheet="Inventory", ttl=0)
+        
+        # 2. Append to the LIVE data
+        updated_df = pd.concat([live_df, pd.DataFrame([item_data])], ignore_index=True)
+        self.update_sheet("Inventory", updated_df)
         return updated_df
 
     def add_nib_order(self, df, order_data):
@@ -103,18 +108,21 @@ class DbManager:
         
         if current_stock < 1: return False, "❌ Out of Stock!"
 
-        inventory_df.loc[row_index, "Stock"] = current_stock - 1
-        self._save_sheet_to_memory_and_google("Inventory", inventory_df)
+        # UPDATE INVENTORY (LIVE READ)
+        st.cache_data.clear()
+        live_inv = self.conn.read(worksheet="Inventory", ttl=0)
+        live_inv.loc[row_index, "Stock"] = current_stock - 1
+        self.update_sheet("Inventory", live_inv)
 
-        sales_data = self._get_sheet_from_memory("Sales", ["Date", "Item Sold", "Quantity", "Selling Price", "Currency", "Cost Price", "Exchange Rate"])
-
+        # UPDATE SALES (LIVE READ)
+        live_sales = self.conn.read(worksheet="Sales", ttl=0)
         new_sale = {
             "Date": str(date.today()), "Item Sold": item_name, "Quantity": 1,
             "Selling Price": float(final_selling_price), "Currency": sales_currency,
             "Cost Price": normalized_cost, "Exchange Rate": exchange_rate
         }
-        updated_sales = pd.concat([sales_data, pd.DataFrame([new_sale])], ignore_index=True)
-        self._save_sheet_to_memory_and_google("Sales", updated_sales)
+        updated_sales = pd.concat([live_sales, pd.DataFrame([new_sale])], ignore_index=True)
+        self.update_sheet("Sales", updated_sales)
         return True, f"✅ Sold {item_name} for {final_selling_price} {sales_currency}!"
 
     def log_expense(self, category, amount, currency, notes):
@@ -449,19 +457,21 @@ def main():
                     st.write("**Revenue by Category**")
                     
                     if not month_sales.empty or not month_nibs.empty:
-                        # 1. Map items to their raw types from Inventory
-                        inv_df["Item Key"] = inv_df["Brand"].fillna("").astype(str) + " " + inv_df["Model"].fillna("").astype(str)
-                        inv_df["Item Key"] = inv_df["Item Key"].str.strip()
-                        type_mapping = dict(zip(inv_df["Item Key"], inv_df["Type"]))
+                        # 1. AGGRESSIVE CLEANING: Lowercase and strip spaces for a flawless match
+                        inv_df["Item Key"] = (inv_df["Brand"].fillna("").astype(str) + " " + inv_df["Model"].fillna("").astype(str)).str.strip().str.lower()
+                        type_mapping = dict(zip(inv_df["Item Key"], inv_df["Type"].fillna("").astype(str).str.lower()))
                         
                         month_sales_chart = month_sales.copy()
                         if not month_sales_chart.empty:
-                            # Pull the raw type, defaulting to blank if missing
-                            month_sales_chart["Raw Category"] = month_sales_chart["Item Sold"].map(type_mapping).fillna("")
+                            month_sales_chart["Clean Sold"] = month_sales_chart["Item Sold"].astype(str).str.strip().str.lower()
                             
-                            # 2. STRICT ENFORCEMENT: Only "Ink" or "Pen" allowed for physical goods
-                            month_sales_chart["Category"] = month_sales_chart["Raw Category"].apply(
-                                lambda x: "Ink" if "ink" in str(x).lower() else "Pen"
+                            # Map using the cleaned names
+                            month_sales_chart["Raw Category"] = month_sales_chart["Clean Sold"].map(type_mapping).fillna("")
+                            
+                            # 2. THE RUTHLESS FILTER: Checks both columns for the exact letters i-n-k
+                            month_sales_chart["Category"] = month_sales_chart.apply(
+                                lambda row: "Ink" if "ink" in str(row["Raw Category"]) or "ink" in str(row["Clean Sold"]) else "Pen",
+                                axis=1
                             )
                             
                             rev_pie_data = month_sales_chart.groupby("Category")["Selling Price"].sum().reset_index()
@@ -469,13 +479,12 @@ def main():
                         else:
                             rev_pie_data = pd.DataFrame(columns=["Category", "Amount"])
 
-                        # 3. Inject "Nib Services" as the final strict category
+                        # Inject Nib Services
                         nib_rev = month_nibs["Price"].sum()
                         if nib_rev > 0:
                             nib_row = pd.DataFrame([{"Category": "Nib Services", "Amount": nib_rev}])
                             rev_pie_data = pd.concat([rev_pie_data, nib_row], ignore_index=True)
 
-                        # 4. Render the locked-down chart
                         if not rev_pie_data.empty:
                             fig_rev = px.pie(
                                 rev_pie_data, values='Amount', names='Category', hole=0.4, 
@@ -515,6 +524,7 @@ def main():
                 st.error(f"Financials waiting for data... ({e})")
 if __name__ == "__main__":
     main()
+
 
 
 
