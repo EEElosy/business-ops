@@ -361,9 +361,9 @@ def main():
         with tab_finance:
             st.header("📊 Financial Analytics")
             try:
-                # 1. Load Data (Corrected to use load_sheet)
-                sales_df = db.load_sheet("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
-                expense_df = db.load_sheet("Expenses", ["Amount", "Category", "Currency", "Date"])
+                # 1. Load Data (Using your RAM Cache)
+                sales_df = db._get_sheet_from_memory("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
+                expense_df = db._get_sheet_from_memory("Expenses", ["Amount", "Category", "Currency", "Date"])
                 
                 # 2. Clean Data for Math
                 sales_df["DateObj"] = pd.to_datetime(sales_df["Date"], errors='coerce')
@@ -460,6 +460,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
