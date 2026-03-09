@@ -252,6 +252,12 @@ def main():
                         success, msg = db.register_sale(inventory, selected_idx, final_price, sales_curr, exchange_rate)
                         if success:
                             st.success(msg)
+                            for key in list(st.session_state.keys()):
+                                if "password" not in key.lower() and key != "last_refresh":
+                                    del st.session_state[key]
+                            st.cache_data.clear()
+                            import time
+                            time.sleep(1.5) 
                             st.rerun()
                         else:
                             st.error(msg)
@@ -557,6 +563,7 @@ def main():
                 st.error(f"Financials waiting for data... ({e})")
 if __name__ == "__main__":
     main()
+
 
 
 
