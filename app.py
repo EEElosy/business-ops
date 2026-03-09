@@ -112,7 +112,9 @@ class DbManager:
         st.cache_data.clear()
         live_inv = self.conn.read(worksheet="Inventory", ttl=0)
         live_inv.loc[row_index, "Stock"] = current_stock - 1
-        self.update_sheet("Inventory", live_inv)
+        
+        # --- FIXED COMMAND ---
+        self.conn.update(worksheet="Inventory", data=live_inv)
 
         # UPDATE SALES (LIVE READ)
         live_sales = self.conn.read(worksheet="Sales", ttl=0)
@@ -122,7 +124,10 @@ class DbManager:
             "Cost Price": normalized_cost, "Exchange Rate": exchange_rate
         }
         updated_sales = pd.concat([live_sales, pd.DataFrame([new_sale])], ignore_index=True)
-        self.update_sheet("Sales", updated_sales)
+        
+        # --- FIXED COMMAND ---
+        self.conn.update(worksheet="Sales", data=updated_sales)
+        
         return True, f"✅ Sold {item_name} for {final_selling_price} {sales_currency}!"
 
     def log_expense(self, category, amount, currency, notes):
@@ -549,6 +554,7 @@ def main():
                 st.error(f"Financials waiting for data... ({e})")
 if __name__ == "__main__":
     main()
+
 
 
 
