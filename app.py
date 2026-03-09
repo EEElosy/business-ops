@@ -325,9 +325,6 @@ def main():
 
         # --- TAB 3: INVENTORY (Omitted for brevity, remains unchanged) ---
         with tab_inv:
-            st.subheader("Current Stock")
-            st.dataframe(inventory, use_container_width=True)
-
             with st.expander("➕ Add New Inventory"):
                 with st.form("add_inv", clear_on_submit=True):
                     # Row 1: Type is now placed before Brand
@@ -357,6 +354,8 @@ def main():
                         db.add_inventory_item(inventory, new_item)
                         st.success(f"Added {b} {m} ({item_type})!")
                         st.rerun()
+            st.subheader("Current Stock")
+            st.dataframe(inventory, use_container_width=True)
 
         # --- TAB 4: REAL PROFIT & ANALYTICS ---
         with tab_finance:
@@ -447,6 +446,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
