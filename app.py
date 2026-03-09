@@ -376,14 +376,24 @@ def main():
                 inv_df = db._get_sheet_from_memory("Inventory", ["Type", "Brand", "Model"]) # Added to look up item types!
 
                 # 2. AGGRESSIVE DATA CLEANING
-                sales_df["DateObj"] = pd.to_datetime(sales_df["Date"], errors='coerce')
-                expense_df["DateObj"] = pd.to_datetime(expense_df["Date"], errors='coerce')
+                sales_df["DateObj"] = pd.to_datetime(sales_df["Date"], errors='coerce', dayfirst=True, format='mixed')
+                expense_df["DateObj"] = pd.to_datetime(expense_df["Date"], errors='coerce', dayfirst=True, format='mixed')
                 
-                # Strip symbols ($, €), keep digits, convert commas to periods, then do the math
                 sales_df["Selling Price"] = pd.to_numeric(sales_df["Selling Price"].astype(str).str.replace(r'[^\d\.,]', '', regex=True).str.replace(',', '.'), errors='coerce').fillna(0)
                 sales_df["Cost Price"] = pd.to_numeric(sales_df["Cost Price"].astype(str).str.replace(r'[^\d\.,]', '', regex=True).str.replace(',', '.'), errors='coerce').fillna(0)
                 expense_df["Amount"] = pd.to_numeric(expense_df["Amount"].astype(str).str.replace(r'[^\d\.,]', '', regex=True).str.replace(',', '.'), errors='coerce').fillna(0)
 
+                # Prep Nib Orders for bulletproof math
+                if not nib_orders.empty:
+                    nib_orders["DateObj"] = pd.to_datetime(nib_orders["Date"], errors='coerce', dayfirst=True, format='mixed')
+                    nib_orders["Price"] = pd.to_numeric(nib_orders["Price"].astype(str).str.replace(r'[^\d\.,]', '', regex=True).str.replace(',', '.'), errors='coerce').fillna(0)
+                    
+                    # THIS IS WHAT SAVES YOUR 3750 ROW: Strips hidden spaces and forces correct capitalization
+                    nib_orders["Status"] = nib_orders["Status"].astype(str).str.strip().str.title()
+                else:
+                    nib_orders["DateObj"] = pd.Series(dtype='datetime64[ns]')
+                    nib_orders["Price"] = pd.Series(dtype='float64')
+                    nib_orders["Status"] = pd.Series(dtype='object')
                 # Prep Nib Orders for bulletproof math
                 if not nib_orders.empty:
                     nib_orders["DateObj"] = pd.to_datetime(nib_orders["Date"], errors='coerce')
@@ -538,6 +548,7 @@ def main():
                 st.error(f"Financials waiting for data... ({e})")
 if __name__ == "__main__":
     main()
+
 
 
 
