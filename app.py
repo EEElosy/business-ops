@@ -104,19 +104,22 @@ class DbManager:
         
         normalized_cost = original_cost * exchange_rate
         item_name = f"{brand} {model}"
-        current_stock = inventory_df.loc[row_index, "Stock"]
         
-        if current_stock < 1: return False, "❌ Out of Stock!"
-
-        # UPDATE INVENTORY (LIVE READ)
+        # 1. READ LIVE INVENTORY FIRST
         st.cache_data.clear()
         live_inv = self.conn.read(worksheet="Inventory", ttl=0)
-        live_inv.loc[row_index, "Stock"] = current_stock - 1
         
-        # --- FIXED COMMAND ---
+        # 2. DO THE MATH USING GOOGLE'S ACTUAL NUMBERS, NOT THE STALE MEMORY
+        actual_live_stock = live_inv.loc[row_index, "Stock"]
+        
+        if actual_live_stock < 1: 
+            return False, "❌ Out of Stock!"
+
+        # 3. DEDUCT AND SAVE
+        live_inv.loc[row_index, "Stock"] = actual_live_stock - 1
         self.conn.update(worksheet="Inventory", data=live_inv)
 
-        # UPDATE SALES (LIVE READ)
+        # 4. LOG THE SALE
         live_sales = self.conn.read(worksheet="Sales", ttl=0)
         new_sale = {
             "Date": str(date.today()), "Item Sold": item_name, "Quantity": 1,
@@ -124,10 +127,10 @@ class DbManager:
             "Cost Price": normalized_cost, "Exchange Rate": exchange_rate
         }
         updated_sales = pd.concat([live_sales, pd.DataFrame([new_sale])], ignore_index=True)
-        
-        # --- FIXED COMMAND ---
         self.conn.update(worksheet="Sales", data=updated_sales)
         
+        # 5. NUKE THE CACHE SO THE APP KNOWS TO DOWNLOAD THE NEWEST SHEET
+        st.cache_data.clear()
         return True, f"✅ Sold {item_name} for {final_selling_price} {sales_currency}!"
 
     def log_expense(self, category, amount, currency, notes):
@@ -244,7 +247,7 @@ def main():
                     if final_price < cost:
                         st.warning(f"⚠️ Loss Alert: Selling {cost - final_price:.2f} {sales_curr} below cost!")
 
-                    # Confirm Button 
+                    # Confirm Button
                     if st.button("✅ Confirm Sale", type="primary"):
                         success, msg = db.register_sale(inventory, selected_idx, final_price, sales_curr, exchange_rate)
                         if success:
@@ -554,6 +557,7 @@ def main():
                 st.error(f"Financials waiting for data... ({e})")
 if __name__ == "__main__":
     main()
+
 
 
 
