@@ -330,7 +330,7 @@ def main():
                     # Row 1: Type is now placed before Brand
                     c_date, c_type, c_brand, c_model = st.columns(4)
                     d = c_date.date_input("Date", value=date.today())
-                    item_type = c_type.selectbox("Type", ["Fountain Pen", "Ink", "Nib", "Notebook", "Accessory", "Other"])
+                    item_type = c_type.selectbox("Type", ["Pen", "Ink", "Nib", "Notebook", "Accessory", "Other"])
                     b = c_brand.text_input("Brand")
                     m = c_model.text_input("Model")
                     
@@ -511,6 +511,7 @@ def main():
                 st.error(f"Financials waiting for data... ({e})")
 if __name__ == "__main__":
     main()
+
 
 
 
