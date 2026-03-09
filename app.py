@@ -444,23 +444,24 @@ def main():
                         st.plotly_chart(fig_exp, use_container_width=True)
                     else:
                         st.info("No expenses logged this month.")
-                        
+
                 with chart_col2:
                     st.write("**Revenue by Category**")
                     
                     if not month_sales.empty or not month_nibs.empty:
+                        # 1. Map items to their raw types from Inventory
                         inv_df["Item Key"] = inv_df["Brand"].fillna("").astype(str) + " " + inv_df["Model"].fillna("").astype(str)
                         inv_df["Item Key"] = inv_df["Item Key"].str.strip()
-                        type_mapping = dict(zip(inv_df["Item Key"], inv_df["Type"].fillna("Other")))
+                        type_mapping = dict(zip(inv_df["Item Key"], inv_df["Type"]))
                         
                         month_sales_chart = month_sales.copy()
                         if not month_sales_chart.empty:
-                            month_sales_chart["Category"] = month_sales_chart["Item Sold"].map(type_mapping).fillna("Uncategorized")
+                            # Pull the raw type, defaulting to blank if missing
+                            month_sales_chart["Raw Category"] = month_sales_chart["Item Sold"].map(type_mapping).fillna("")
                             
-                            # --- NEW: LEGACY DATA CONSOLIDATION ---
-                            # Forces any old "Fountain Pen" entries to merge into the "Pen" slice
-                            month_sales_chart["Category"] = month_sales_chart["Category"].replace(
-                                {"Fountain Pen": "Pen", "fountain pen": "Pen", "Fountain pen": "Pen"}
+                            # 2. STRICT ENFORCEMENT: Only "Ink" or "Pen" allowed for physical goods
+                            month_sales_chart["Category"] = month_sales_chart["Raw Category"].apply(
+                                lambda x: "Ink" if "ink" in str(x).lower() else "Pen"
                             )
                             
                             rev_pie_data = month_sales_chart.groupby("Category")["Selling Price"].sum().reset_index()
@@ -468,11 +469,13 @@ def main():
                         else:
                             rev_pie_data = pd.DataFrame(columns=["Category", "Amount"])
 
+                        # 3. Inject "Nib Services" as the final strict category
                         nib_rev = month_nibs["Price"].sum()
                         if nib_rev > 0:
                             nib_row = pd.DataFrame([{"Category": "Nib Services", "Amount": nib_rev}])
                             rev_pie_data = pd.concat([rev_pie_data, nib_row], ignore_index=True)
 
+                        # 4. Render the locked-down chart
                         if not rev_pie_data.empty:
                             fig_rev = px.pie(
                                 rev_pie_data, values='Amount', names='Category', hole=0.4, 
@@ -512,6 +515,7 @@ def main():
                 st.error(f"Financials waiting for data... ({e})")
 if __name__ == "__main__":
     main()
+
 
 
 
