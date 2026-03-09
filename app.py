@@ -356,110 +356,134 @@ def main():
                         st.rerun()
             st.subheader("Current Stock")
             st.dataframe(inventory, use_container_width=True)
-            
+    
         # --- TAB 4: REAL PROFIT & ANALYTICS ---
         with tab_finance:
             st.header("📊 Financial Analytics")
             try:
-                # 1. Load Data (Using your RAM Cache)
+                # 1. Load Data
                 sales_df = db._get_sheet_from_memory("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
                 expense_df = db._get_sheet_from_memory("Expenses", ["Amount", "Category", "Currency", "Date"])
                 
-                # 2. Clean Data for Math
+                # 2. Clean Data & Convert Types
                 sales_df["DateObj"] = pd.to_datetime(sales_df["Date"], errors='coerce')
                 expense_df["DateObj"] = pd.to_datetime(expense_df["Date"], errors='coerce')
+                
                 sales_df["Selling Price"] = pd.to_numeric(sales_df["Selling Price"], errors='coerce').fillna(0)
                 sales_df["Cost Price"] = pd.to_numeric(sales_df["Cost Price"], errors='coerce').fillna(0)
                 expense_df["Amount"] = pd.to_numeric(expense_df["Amount"], errors='coerce').fillna(0)
+
+                # Prep Nib Orders for math
+                if not nib_orders.empty:
+                    nib_orders["DateObj"] = pd.to_datetime(nib_orders["Date"], errors='coerce')
+                    nib_orders["Price"] = pd.to_numeric(nib_orders["Price"], errors='coerce').fillna(0)
+                else:
+                    nib_orders["DateObj"] = pd.Series(dtype='datetime64[ns]')
+                    nib_orders["Price"] = pd.Series(dtype='float64')
+                    nib_orders["Status"] = pd.Series(dtype='object')
 
                 # 3. Setup Time Filters
                 now = pd.Timestamp.now()
                 seven_days_ago = now - pd.Timedelta(days=7)
                 
-                this_month_sales = sales_df[sales_df["DateObj"].dt.month == now.month]
+                month_sales = sales_df[sales_df["DateObj"].dt.month == now.month]
                 week_sales = sales_df[sales_df["DateObj"] >= seven_days_ago]
                 
-                this_month_exp = expense_df[expense_df["DateObj"].dt.month == now.month]
+                month_exp = expense_df[expense_df["DateObj"].dt.month == now.month]
                 week_exp = expense_df[expense_df["DateObj"] >= seven_days_ago]
 
-                # --- NEW: REVENUE & EXPENSE OVERVIEW ---
-                st.write("### 💵 Revenue & Expense Overview")
-                r1, r2, r3 = st.columns(3)
-                r1.metric("All-Time Revenue", f"{sales_df['Selling Price'].sum():,.2f}")
-                r2.metric("This Month Revenue", f"{this_month_sales['Selling Price'].sum():,.2f}")
-                r3.metric("Last 7 Days Revenue", f"{week_sales['Selling Price'].sum():,.2f}")
+                completed_nibs = nib_orders[nib_orders["Status"] == "Completed"] if not nib_orders.empty else pd.DataFrame(columns=["DateObj", "Price"])
+                month_nibs = completed_nibs[completed_nibs["DateObj"].dt.month == now.month]
+                week_nibs = completed_nibs[completed_nibs["DateObj"] >= seven_days_ago]
 
-                e1, e2, e3 = st.columns(3)
-                e1.metric("All-Time Expenses", f"{expense_df['Amount'].sum():,.2f}")
-                e2.metric("This Month Expenses", f"{this_month_exp['Amount'].sum():,.2f}")
-                e3.metric("Last 7 Days Expenses", f"{week_exp['Amount'].sum():,.2f}")
+                # --- SECTION 1: NET PROFIT ---
+                st.write("### 💰 Net Profit")
+                
+                # Helper function to calculate profit: (Sales Rev + Nib Rev) - (COGS + Expenses)
+                def calc_profit(s_df, e_df, n_df):
+                    rev = s_df["Selling Price"].sum() + n_df["Price"].sum()
+                    costs = s_df["Cost Price"].sum() + e_df["Amount"].sum()
+                    return rev - costs
 
-                st.divider()
-
-                # --- NEW: EXPENSE PIE CHART ---
-                st.write("### 🍩 This Month's Expense Breakdown")
-                if not this_month_exp.empty:
-                    # Group expenses by Category
-                    pie_data = this_month_exp.groupby("Category")["Amount"].sum().reset_index()
-                    fig = px.pie(
-                        pie_data, values='Amount', names='Category', hole=0.4, 
-                        color_discrete_sequence=px.colors.sequential.RdBu
-                    )
-                    fig.update_traces(textposition='inside', textinfo='percent+label')
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info("No expenses logged yet for this month. Great job! 🎉")
+                p1, p2, p3 = st.columns(3)
+                p1.metric("All-Time Profit", f"{calc_profit(sales_df, expense_df, completed_nibs):,.2f}")
+                p2.metric("This Month Profit", f"{calc_profit(month_sales, month_exp, month_nibs):,.2f}")
+                p3.metric("Last 7 Days Profit", f"{calc_profit(week_sales, week_exp, week_nibs):,.2f}")
 
                 st.divider()
 
-                # --- ORIGINAL: NIB SERVICE VOLUME ---
+                # --- SECTION 2: NIB SERVICE VOLUME ---
                 st.write("### ✒️ Nib Service Volume")
                 if not nib_orders.empty:
-                    nib_orders["DateObj"] = pd.to_datetime(nib_orders["Date"], errors='coerce')
-                    today = pd.to_datetime(date.today())
-                    
-                    orders_7d = nib_orders[nib_orders["DateObj"] >= (today - timedelta(days=7))]
-                    orders_30d = nib_orders[nib_orders["DateObj"] >= (today - timedelta(days=30))]
+                    orders_7d = nib_orders[nib_orders["DateObj"] >= seven_days_ago]
+                    orders_30d = nib_orders[nib_orders["DateObj"] >= (now - pd.Timedelta(days=30))]
                     
                     v1, v2, v3 = st.columns(3)
                     v1.metric("Orders (Last 7 Days)", len(orders_7d))
                     v2.metric("Orders (Last 30 Days)", len(orders_30d))
                     v3.metric("Pending Queue", len(nib_orders[nib_orders["Status"] == "In Progress"]))
-                
+                else:
+                    st.info("No Nib Orders yet.")
+
                 st.divider()
 
-                # --- ORIGINAL: CONSOLIDATED PROFIT ---
-                st.write("### 💰 Consolidated Profit by Currency")
-                completed_nibs = nib_orders[nib_orders["Status"] == "Completed"]
+                # --- SECTION 3: SIDE-BY-SIDE PIE CHARTS ---
+                st.write("### 🍩 This Month's Breakdown")
+                chart_col1, chart_col2 = st.columns(2)
                 
-                all_currencies = set(sales_df["Currency"].unique()) | set(expense_df["Currency"].unique()) | set(completed_nibs["Currency"].unique())
-                all_currencies.discard("") 
+                with chart_col1:
+                    st.write("**Expenses by Category**")
+                    if not month_exp.empty:
+                        exp_pie_data = month_exp.groupby("Category")["Amount"].sum().reset_index()
+                        fig_exp = px.pie(
+                            exp_pie_data, values='Amount', names='Category', hole=0.4, 
+                            color_discrete_sequence=px.colors.sequential.RdBu
+                        )
+                        fig_exp.update_traces(textposition='inside', textinfo='percent+label')
+                        st.plotly_chart(fig_exp, use_container_width=True)
+                    else:
+                        st.info("No expenses logged this month.")
+
+                with chart_col2:
+                    st.write("**Revenue by Item**")
+                    if not month_sales.empty:
+                        # Groups revenue by the specific item sold
+                        rev_pie_data = month_sales.groupby("Item Sold")["Selling Price"].sum().reset_index()
+                        fig_rev = px.pie(
+                            rev_pie_data, values='Selling Price', names='Item Sold', hole=0.4, 
+                            color_discrete_sequence=px.colors.sequential.Tealgrn
+                        )
+                        fig_rev.update_traces(textposition='inside', textinfo='percent+label')
+                        st.plotly_chart(fig_rev, use_container_width=True)
+                    else:
+                        st.info("No physical sales logged this month.")
+
+                st.divider()
+
+                # --- SECTION 4: NUMERICAL REVENUE & EXPENSES ---
+                st.write("### 📈 Revenue & Expense Details")
                 
-                if not all_currencies:
-                    st.info("No financial data yet.")
-                else:
-                    cols = st.columns(len(all_currencies))
-                    for i, currency in enumerate(all_currencies):
-                        product_rev = sales_df[sales_df["Currency"] == currency]["Selling Price"].sum()
-                        service_rev = completed_nibs[completed_nibs["Currency"] == currency]["Price"].sum()
-                        total_rev = product_rev + service_rev
-                        
-                        cogs = sales_df[sales_df["Currency"] == currency]["Cost Price"].sum()
-                        exp = expense_df[expense_df["Currency"] == currency]["Amount"].sum()
-                        
-                        net_profit = total_rev - cogs - exp
-                        
-                        with cols[i]:
-                            st.metric(
-                                f"Net Profit ({currency})", f"{net_profit:,.2f}", 
-                                delta=f"Rev: {total_rev} | Cost/Exp: {cogs + exp}"
-                            )
+                # Combine physical sales and completed nib services for total revenue
+                total_rev = sales_df['Selling Price'].sum() + completed_nibs['Price'].sum()
+                month_rev = month_sales['Selling Price'].sum() + month_nibs['Price'].sum()
+                week_rev = week_sales['Selling Price'].sum() + week_nibs['Price'].sum()
+
+                r1, r2, r3 = st.columns(3)
+                r1.metric("All-Time Revenue", f"{total_rev:,.2f}")
+                r2.metric("This Month Revenue", f"{month_rev:,.2f}")
+                r3.metric("Last 7 Days Revenue", f"{week_rev:,.2f}")
+
+                e1, e2, e3 = st.columns(3)
+                e1.metric("All-Time Expenses", f"{expense_df['Amount'].sum():,.2f}")
+                e2.metric("This Month Expenses", f"{month_exp['Amount'].sum():,.2f}")
+                e3.metric("Last 7 Days Expenses", f"{week_exp['Amount'].sum():,.2f}")
 
             except Exception as e:
                 st.error(f"Financials waiting for data... ({e})")
 
 if __name__ == "__main__":
     main()
+
 
 
 
