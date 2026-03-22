@@ -8,22 +8,191 @@ from datetime import date, timedelta
 
 st.set_page_config(layout="wide", page_title="Nibworks ✒️")
 
-# --- CUSTOM CSS INJECTION ---
-st.markdown("""
-    <style>
-    /* Target ONLY primary buttons */
-    button[kind="primary"] {
-        background-color: #93F59A !important;
-        color: #111111 !important; /* Dark text so you can read it */
-        border: 1px solid #93F59A !important;
-    }
-    /* Add a slight darkening effect when you hover over it */
-    button[kind="primary"]:hover {
-        background-color: #7ce084 !important;
-        border: 1px solid #7ce084 !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# ── DESIGN SYSTEM ────────────────────────────────────────────────────────────
+st.markdown(
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'DM Sans', sans-serif !important;
+}
+
+.stApp { background-color: #F7F6F2 !important; }
+.block-container { padding-top: 2rem !important; max-width: 1200px !important; }
+
+h1 {
+    font-family: 'DM Sans', sans-serif !important;
+    font-weight: 300 !important;
+    font-size: 26px !important;
+    letter-spacing: -.4px !important;
+    color: #1A1A1A !important;
+}
+h2, h3 {
+    font-weight: 400 !important;
+    font-size: 13px !important;
+    color: #888 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .07em !important;
+}
+
+/* TABS */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0 !important;
+    background: #EDEDEA !important;
+    border-radius: 10px !important;
+    padding: 3px !important;
+    border: none !important;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 8px !important;
+    padding: 8px 18px !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    color: #888 !important;
+    background: transparent !important;
+    border: none !important;
+}
+.stTabs [aria-selected="true"] {
+    background: #FFFFFF !important;
+    color: #1A1A1A !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+
+/* PRIMARY BUTTON */
+button[kind="primary"] {
+    background-color: #C8F7CC !important;
+    color: #1A5C22 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    font-size: 13px !important;
+    transition: background .15s ease !important;
+}
+button[kind="primary"]:hover { background-color: #A8EEB0 !important; }
+
+/* SECONDARY BUTTON */
+button[kind="secondary"] {
+    background-color: transparent !important;
+    color: #888 !important;
+    border: 0.5px solid #DDDDD8 !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+}
+
+/* INPUTS */
+input, textarea, select,
+[data-baseweb="input"] input,
+[data-baseweb="select"] {
+    background-color: #FFFFFF !important;
+    border: 0.5px solid #DDDDD8 !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    color: #1A1A1A !important;
+}
+[data-baseweb="input"]:focus-within,
+[data-baseweb="select"]:focus-within {
+    border-color: #93F59A !important;
+    box-shadow: 0 0 0 3px rgba(147,245,154,0.2) !important;
+}
+
+/* FORM */
+[data-testid="stForm"] {
+    background: #FFFFFF !important;
+    border: 0.5px solid #EDEDEA !important;
+    border-radius: 12px !important;
+    padding: 1.25rem !important;
+}
+
+/* METRICS */
+[data-testid="stMetric"] {
+    background: #FFFFFF !important;
+    border: 0.5px solid #EDEDEA !important;
+    border-radius: 12px !important;
+    padding: 1rem 1.25rem !important;
+}
+[data-testid="stMetricLabel"] {
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: .08em !important;
+    color: #999 !important;
+    font-weight: 400 !important;
+}
+[data-testid="stMetricValue"] {
+    font-size: 22px !important;
+    font-weight: 400 !important;
+    color: #1A1A1A !important;
+    font-family: 'DM Mono', monospace !important;
+}
+
+/* DATAFRAME */
+[data-testid="stDataFrame"] {
+    border-radius: 10px !important;
+    overflow: hidden !important;
+    border: 0.5px solid #EDEDEA !important;
+}
+
+/* ALERTS */
+[data-testid="stAlert"] { border-radius: 8px !important; font-size: 13px !important; }
+
+/* DIVIDER */
+hr { border-color: #EDEDEA !important; margin: 1.5rem 0 !important; }
+
+/* TOAST */
+[data-testid="stToast"] { border-radius: 10px !important; font-size: 13px !important; }
+
+/* NIB TAB CUSTOM STYLES */
+.nib-section-label {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #999;
+    margin-bottom: 10px;
+}
+.nib-order-card {
+    background: #FFFFFF;
+    border: 0.5px solid #E8E6E0;
+    border-radius: 10px;
+    padding: .9rem 1rem;
+    margin-bottom: 8px;
+}
+.nib-order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+.nib-order-name { font-size: 14px; font-weight: 500; color: #1A1A1A; }
+.nib-order-meta { font-size: 11px; color: #AAA; margin-top: 2px; }
+.nib-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.nib-badge-warn { background: #FAEEDA; color: #854F0B; }
+.nib-badge-ok   { background: #EAF3DE; color: #3B6D11; }
+.nib-badge-prog { background: #EEEDFE; color: #3C3489; }
+
+.comp-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 0.5px solid #F0EFEB;
+    font-size: 13px;
+}
+.comp-row:last-child { border-bottom: none; }
+.comp-name { color: #1A1A1A; }
+.comp-date { font-size: 11px; color: #BBB; }
+.comp-price { font-family: 'DM Mono', monospace; font-weight: 500; color: #1A1A1A; }
+</style>
+, unsafe_allow_html=True)
+
+
 
 # --- AUTHENTICATION ---
 def check_password():
