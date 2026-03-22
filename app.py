@@ -9,7 +9,7 @@ from datetime import date, timedelta
 st.set_page_config(layout="wide", page_title="Nibworks ✒️")
 
 # ── DESIGN SYSTEM ────────────────────────────────────────────────────────────
-st.markdown(
+st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
 
@@ -190,7 +190,7 @@ hr { border-color: #EDEDEA !important; margin: 1.5rem 0 !important; }
 .comp-date { font-size: 11px; color: #BBB; }
 .comp-price { font-family: 'DM Mono', monospace; font-weight: 500; color: #1A1A1A; }
 </style>
-, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 
 
