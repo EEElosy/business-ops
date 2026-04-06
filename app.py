@@ -89,16 +89,26 @@ class DbManager:
         self.conn.update(worksheet="Inventory", data=updated_df)
         
         return updated_df
-
+        
     def add_nib_order(self, df, order_data):
-        updated_df = pd.concat([df, pd.DataFrame([order_data])], ignore_index=True)
-        self._save_sheet_to_memory_and_google("Nib Orders", updated_df)
-        return updated_df 
+        # 1. Force Live Read
+        st.cache_data.clear()
+        live_nibs = self.conn.read(worksheet="Nib Orders", ttl=0)
+        
+        # 2. Append and Save Live
+        updated_nibs = pd.concat([live_nibs, pd.DataFrame([order_data])], ignore_index=True)
+        self.conn.update(worksheet="Nib Orders", data=updated_nibs)
+        return updated_nibs 
 
     def update_nib_order(self, df, index, new_status, new_price):
-        df.loc[index, "Status"] = new_status
-        df.loc[index, "Price"] = float(new_price)
-        self._save_sheet_to_memory_and_google("Nib Orders", df)
+        # 1. Force Live Read
+        st.cache_data.clear()
+        live_nibs = self.conn.read(worksheet="Nib Orders", ttl=0)
+        
+        # 2. Update and Save Live
+        live_nibs.loc[index, "Status"] = new_status
+        live_nibs.loc[index, "Price"] = float(new_price)
+        self.conn.update(worksheet="Nib Orders", data=live_nibs)
 
     def register_sale(self, inventory_df, row_index, final_selling_price, sales_currency, exchange_rate):
         brand = inventory_df.loc[row_index, 'Brand']
