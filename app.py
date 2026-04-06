@@ -286,10 +286,9 @@ def main():
                             st.rerun()
                         else:
                             st.error(msg)
-
             with c2:
                 st.subheader("💸 Log Expense")
-                with st.form("expense_form"):
+                with st.form("expense_form", clear_on_submit=True):
                     cat = st.selectbox("Category", ["Shipment", "Bank/Card", "Food & Beverages", "Salary", "Taxi", "Debt", "Inventory Purchase", "Other"])
                     e_col1, e_col2 = st.columns([2, 1])
                     amt = e_col1.number_input("Amount", min_value=0.0, step=50.0)
@@ -298,7 +297,16 @@ def main():
                     
                     if st.form_submit_button("Save Expense"):
                         db.log_expense(cat, amt, curr, note)
-                        st.success("Expense Saved!")
+                        st.success("✅ Expense Saved!")
+                        
+                        # --- AUTO-REFRESH WIPE ---
+                        for key in list(st.session_state.keys()):
+                            if "password" not in key.lower() and key != "last_refresh":
+                                del st.session_state[key]
+                        st.cache_data.clear()
+                        import time
+                        time.sleep(1.5)
+                        st.rerun()
                         
         # --- TAB 2: NIB CUSTOMIZATION SERVICES ---
         with tab_nib:
@@ -310,7 +318,7 @@ def main():
                 # 1. We create an "empty placeholder" at the TOP of the section
                 # so the error message appears above the form, not below it.
                 msg_box = st.empty() 
-                
+
                 with st.form("new_nib", clear_on_submit=True):
                     n_date = st.date_input("Order Date", value=date.today())
                     n_name = st.text_input("Customer/Order Name")
@@ -324,13 +332,21 @@ def main():
                                 "Date": str(n_date), "Name": n_name, "Quantity": n_qty,
                                 "Status": "In Progress", "Price": n_price, "Currency": n_curr
                             })
-                            # Floating popup + Top message
                             st.toast("Order successfully created!", icon="✅")
                             msg_box.success("✅ Order Added!")
+                            
+                            # --- AUTO-REFRESH WIPE ---
+                            for key in list(st.session_state.keys()):
+                                if "password" not in key.lower() and key != "last_refresh":
+                                    del st.session_state[key]
+                            st.cache_data.clear()
+                            import time
+                            time.sleep(1.5)
+                            st.rerun()
                         else:
-                            # Floating error popup + Top error message
                             st.toast("Missing Customer Name!", icon="🚨")
                             msg_box.error("⚠️ Customer Name is required.")
+
             with col_queue:
                 st.subheader("📋 Active Work Queue")
                 active_mask = nib_orders["Status"] == "In Progress"
@@ -357,14 +373,20 @@ def main():
                             with c_sym:
                                 # Removed the awful st.write("##") spacers
                                 st.markdown(f"**{row['Currency']}**")
-                            
+
                             with c_btn:
                                 if st.button("✅ Mark Completed", key=f"btn_{idx}", use_container_width=True):
                                     db.update_nib_order(nib_orders, idx, "Completed", new_p)
                                     st.toast(f"Completed {row['Name']}!", icon="🎉")
-                                    st.rerun()
                                     
-                            st.divider()
+                                    # --- AUTO-REFRESH WIPE ---
+                                    for key in list(st.session_state.keys()):
+                                        if "password" not in key.lower() and key != "last_refresh":
+                                            del st.session_state[key]
+                                    st.cache_data.clear()
+                                    import time
+                                    time.sleep(1.0)
+                                    st.rerun()
 
             st.subheader("✅ Completed Orders")
             completed_orders = nib_orders[nib_orders["Status"] == "Completed"]
@@ -391,7 +413,7 @@ def main():
                     targ_p = c_target.number_input("Target Sale Price", value=0.0)
                     stk = c_stock.number_input("Stock", value=1, step=1)
                     cur = c_cur.selectbox("Currency", ["₺", "$", "€", "£"])
-                    
+
                     if st.form_submit_button("Save Item"):
                         new_item = {
                             "Date":str(d), "Type": item_type, "Brand":b, "Model":m, "Color":color, "Details":det,
@@ -400,9 +422,15 @@ def main():
                         }
                         db.add_inventory_item(inventory, new_item)
                         st.success(f"Added {b} {m} ({item_type})!")
+                        
+                        # --- AUTO-REFRESH WIPE ---
+                        for key in list(st.session_state.keys()):
+                            if "password" not in key.lower() and key != "last_refresh":
+                                del st.session_state[key]
+                        st.cache_data.clear()
+                        import time
+                        time.sleep(1.5)
                         st.rerun()
-            st.subheader("Current Stock")
-            st.dataframe(inventory, use_container_width=True)
     
         # --- TAB 4: REAL PROFIT & ANALYTICS ---
         with tab_finance:
@@ -413,7 +441,7 @@ def main():
                 sales_df = db._get_sheet_from_memory("Sales", ["Selling Price", "Cost Price", "Currency", "Date", "Item Sold"])
                 expense_df = db._get_sheet_from_memory("Expenses", ["Amount", "Category", "Currency", "Date"])
                 inv_df = db._get_sheet_from_memory("Inventory", ["Type", "Brand", "Model"]) # Added to look up item types!
-
+                
                 # 2. AGGRESSIVE DATA CLEANING
                 sales_df["DateObj"] = pd.to_datetime(sales_df["Date"], errors='coerce', dayfirst=True, format='mixed')
                 expense_df["DateObj"] = pd.to_datetime(expense_df["Date"], errors='coerce', dayfirst=True, format='mixed')
@@ -427,34 +455,13 @@ def main():
                     nib_orders["DateObj"] = pd.to_datetime(nib_orders["Date"], errors='coerce', dayfirst=True, format='mixed')
                     nib_orders["Price"] = pd.to_numeric(nib_orders["Price"].astype(str).str.replace(r'[^\d\.,]', '', regex=True).str.replace(',', '.'), errors='coerce').fillna(0)
                     
-                    # THIS IS WHAT SAVES YOUR 3750 ROW: Strips hidden spaces and forces correct capitalization
+                    # THIS SAVES YOUR 3750 ROW: Strips hidden spaces and forces correct capitalization
                     nib_orders["Status"] = nib_orders["Status"].astype(str).str.strip().str.title()
                 else:
                     nib_orders["DateObj"] = pd.Series(dtype='datetime64[ns]')
                     nib_orders["Price"] = pd.Series(dtype='float64')
                     nib_orders["Status"] = pd.Series(dtype='object')
-                # Prep Nib Orders for bulletproof math
-                if not nib_orders.empty:
-                    nib_orders["DateObj"] = pd.to_datetime(nib_orders["Date"], errors='coerce')
-                    # Strip symbols and convert European commas
-                    nib_orders["Price"] = pd.to_numeric(nib_orders["Price"].astype(str).str.replace(r'[^\d\.,]', '', regex=True).str.replace(',', '.'), errors='coerce').fillna(0)
                     
-                    # Fix spelling/spacing errors in the Status column (e.g. " completed " becomes "Completed")
-                    nib_orders["Status"] = nib_orders["Status"].astype(str).str.strip().str.title()
-                else:
-                    nib_orders["DateObj"] = pd.Series(dtype='datetime64[ns]')
-                    nib_orders["Price"] = pd.Series(dtype='float64')
-                    nib_orders["Status"] = pd.Series(dtype='object')
-
-                # Prep Nib Orders
-                if not nib_orders.empty:
-                    nib_orders["DateObj"] = pd.to_datetime(nib_orders["Date"], errors='coerce')
-                    nib_orders["Price"] = pd.to_numeric(nib_orders["Price"], errors='coerce').fillna(0)
-                else:
-                    nib_orders["DateObj"] = pd.Series(dtype='datetime64[ns]')
-                    nib_orders["Price"] = pd.Series(dtype='float64')
-                    nib_orders["Status"] = pd.Series(dtype='object')
-
                 # Setup Time Filters
                 now = pd.Timestamp.now()
                 seven_days_ago = now - pd.Timedelta(days=7)
