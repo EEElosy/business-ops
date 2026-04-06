@@ -76,15 +76,18 @@ class DbManager:
         df["Price"] = pd.to_numeric(df["Price"], errors='coerce').fillna(0.0)
         if "Currency" not in df.columns: df["Currency"] = "$"
         return df
-
+        
     def add_inventory_item(self, df, item_data):
-        # 1. FORCE LIVE READ: 0-second cache ensures we never overwrite someone else's recent entry
+        # 1. FORCE LIVE READ: 0-second cache ensures we never overwrite someone else's entry
         st.cache_data.clear()
         live_df = self.conn.read(worksheet="Inventory", ttl=0)
         
         # 2. Append to the LIVE data
         updated_df = pd.concat([live_df, pd.DataFrame([item_data])], ignore_index=True)
-        self.update_sheet("Inventory", updated_df)
+        
+        # --- FIXED COMMAND ---
+        self.conn.update(worksheet="Inventory", data=updated_df)
+        
         return updated_df
 
     def add_nib_order(self, df, order_data):
@@ -132,12 +135,24 @@ class DbManager:
         # 5. NUKE THE CACHE SO THE APP KNOWS TO DOWNLOAD THE NEWEST SHEET
         st.cache_data.clear()
         return True, f"✅ Sold {item_name} for {final_selling_price} {sales_currency}!"
-
+        
     def log_expense(self, category, amount, currency, notes):
-        exp_data = self._get_sheet_from_memory("Expenses", ["Date", "Category", "Amount", "Currency", "Notes"])
-        new_expense = {"Date": str(date.today()), "Category": category, "Amount": float(amount), "Currency": currency, "Notes": notes}
-        updated_exp = pd.concat([exp_data, pd.DataFrame([new_expense])], ignore_index=True)
-        self._save_sheet_to_memory_and_google("Expenses", updated_exp)
+        # 1. FORCE LIVE READ: 0-second cache prevents overwriting data
+        st.cache_data.clear()
+        live_exp = self.conn.read(worksheet="Expenses", ttl=0)
+        
+        # 2. Append the new expense
+        new_expense = {
+            "Date": str(date.today()), 
+            "Category": category, 
+            "Amount": float(amount), 
+            "Currency": currency, 
+            "Notes": notes
+        }
+        updated_exp = pd.concat([live_exp, pd.DataFrame([new_expense])], ignore_index=True)
+        
+        # 3. WRITE DIRECTLY TO GOOGLE SHEETS (Using the correct Streamlit command)
+        self.conn.update(worksheet="Expenses", data=updated_exp)
         return True
 
 # --- MAIN APP ---
