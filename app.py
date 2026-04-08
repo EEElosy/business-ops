@@ -427,7 +427,7 @@ def main():
                         time.sleep(1.5)
                         st.rerun()
             st.subheader("Current Stock")
-            
+
             # --- SMART SORT & COLOR HIGHLIGHTING ---
             # 1. Sort the inventory: Highest stock at the top, out-of-stock at the bottom
             display_inv = inventory.sort_values(by="Stock", ascending=False).reset_index(drop=True)
@@ -442,8 +442,15 @@ def main():
                     # Leaves normal stock with standard styling
                     return [""] * len(row)
             
-            # 3. Apply the paint job and render the table
-            st.dataframe(display_inv.style.apply(highlight_out_of_stock, axis=1), use_container_width=True)
+            # 3. Clean up the messy decimals and apply the paint job
+            styled_inv = display_inv.style.format({
+                "Purchase Price": "{:.2f}",
+                "Target Price": "{:.2f}",
+                "Stock": "{:.0f}"  # This forces Stock to be a whole number!
+            }).apply(highlight_out_of_stock, axis=1)
+            
+            # 4. Render the table
+            st.dataframe(styled_inv, use_container_width=True)
 
         # --- TAB 4: REAL PROFIT & ANALYTICS ---
         with tab_finance:
