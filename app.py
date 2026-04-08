@@ -431,7 +431,8 @@ def main():
                         import time
                         time.sleep(1.5)
                         st.rerun()
-    
+            st.subheader("Current Stock")
+            st.dataframe(inventory, use_container_width=True)
         # --- TAB 4: REAL PROFIT & ANALYTICS ---
         with tab_finance:
             # 1. Made the main title smaller (subheader instead of header)
