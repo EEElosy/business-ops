@@ -109,7 +109,7 @@ class DbManager:
         live_nibs.loc[index, "Status"] = new_status
         live_nibs.loc[index, "Price"] = float(new_price)
         self.conn.update(worksheet="Nib Orders", data=live_nibs)
-        
+
     def register_sale(self, inventory_df, row_index, final_selling_price, sales_currency, exchange_rate):
         brand = inventory_df.loc[row_index, 'Brand']
         model = inventory_df.loc[row_index, 'Model']
@@ -128,11 +128,11 @@ class DbManager:
         if actual_live_stock < 1: 
             return False, "❌ Out of Stock!"
 
-        # 3. DEDUCT AND SAVE (Fixed Command)
+        # 3. DEDUCT AND SAVE (This is the fixed command)
         live_inv.loc[row_index, "Stock"] = actual_live_stock - 1
         self.conn.update(worksheet="Inventory", data=live_inv)
 
-        # 4. LOG THE SALE (Fixed Command)
+        # 4. LOG THE SALE (This is the fixed command)
         live_sales = self.conn.read(worksheet="Sales", ttl=0)
         new_sale = {
             "Date": str(date.today()), "Item Sold": item_name, "Quantity": 1,
@@ -381,7 +381,6 @@ def main():
                                         if "password" not in key.lower() and key != "last_refresh":
                                             del st.session_state[key]
                                     st.cache_data.clear()
-                                    import time
                                     time.sleep(1.0)
                                     st.rerun()
 
