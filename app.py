@@ -427,7 +427,24 @@ def main():
                         time.sleep(1.5)
                         st.rerun()
             st.subheader("Current Stock")
-            st.dataframe(inventory, use_container_width=True)
+            
+            # --- SMART SORT & COLOR HIGHLIGHTING ---
+            # 1. Sort the inventory: Highest stock at the top, out-of-stock at the bottom
+            display_inv = inventory.sort_values(by="Stock", ascending=False).reset_index(drop=True)
+            
+            # 2. Create the color logic
+            def highlight_out_of_stock(row):
+                # Check if the stock is less than 1 (handles weird data safely)
+                if pd.to_numeric(row["Stock"], errors="coerce") < 1:
+                    # Paints the row a soft warning red with dark red text
+                    return ["background-color: #FFF0F0; color: #A00000;"] * len(row)
+                else:
+                    # Leaves normal stock with standard styling
+                    return [""] * len(row)
+            
+            # 3. Apply the paint job and render the table
+            st.dataframe(display_inv.style.apply(highlight_out_of_stock, axis=1), use_container_width=True)
+
         # --- TAB 4: REAL PROFIT & ANALYTICS ---
         with tab_finance:
             # 1. Made the main title smaller (subheader instead of header)
