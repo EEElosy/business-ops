@@ -210,14 +210,15 @@ def main():
             with c1:
                 st.subheader("🛒 Transaction")
                 search = st.text_input("Find Item", placeholder="Search Brand, Model, Type, Color... (e.g. 'montblanc blue ink')")
-                
+
                 # --- Tokenized Multi-Word Search Engine ---
                 if search:
+                    # THE FIX: .fillna("") prevents blank fields from destroying the search string
                     search_corpus = (
-                        inventory["Brand"].astype(str) + " " +
-                        inventory["Model"].astype(str) + " " +
-                        inventory["Type"].astype(str) + " " +
-                        inventory["Color"].astype(str)
+                        inventory["Brand"].fillna("").astype(str) + " " +
+                        inventory["Model"].fillna("").astype(str) + " " +
+                        inventory["Type"].fillna("").astype(str) + " " +
+                        inventory["Color"].fillna("").astype(str)
                     ).str.lower()
                     
                     search_words = search.lower().split()
