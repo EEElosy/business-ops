@@ -109,7 +109,7 @@ class DbManager:
         live_nibs.loc[index, "Status"] = new_status
         live_nibs.loc[index, "Price"] = float(new_price)
         self.conn.update(worksheet="Nib Orders", data=live_nibs)
-
+        
     def register_sale(self, inventory_df, row_index, final_selling_price, sales_currency, exchange_rate):
         brand = inventory_df.loc[row_index, 'Brand']
         model = inventory_df.loc[row_index, 'Model']
@@ -122,17 +122,17 @@ class DbManager:
         st.cache_data.clear()
         live_inv = self.conn.read(worksheet="Inventory", ttl=0)
         
-        # 2. DO THE MATH USING GOOGLE'S ACTUAL NUMBERS, NOT THE STALE MEMORY
+        # 2. DO THE MATH
         actual_live_stock = live_inv.loc[row_index, "Stock"]
         
         if actual_live_stock < 1: 
             return False, "❌ Out of Stock!"
 
-        # 3. DEDUCT AND SAVE
+        # 3. DEDUCT AND SAVE (Fixed Command)
         live_inv.loc[row_index, "Stock"] = actual_live_stock - 1
         self.conn.update(worksheet="Inventory", data=live_inv)
 
-        # 4. LOG THE SALE
+        # 4. LOG THE SALE (Fixed Command)
         live_sales = self.conn.read(worksheet="Sales", ttl=0)
         new_sale = {
             "Date": str(date.today()), "Item Sold": item_name, "Quantity": 1,
@@ -142,7 +142,7 @@ class DbManager:
         updated_sales = pd.concat([live_sales, pd.DataFrame([new_sale])], ignore_index=True)
         self.conn.update(worksheet="Sales", data=updated_sales)
         
-        # 5. NUKE THE CACHE SO THE APP KNOWS TO DOWNLOAD THE NEWEST SHEET
+        # 5. NUKE CACHE
         st.cache_data.clear()
         return True, f"✅ Sold {item_name} for {final_selling_price} {sales_currency}!"
         
@@ -281,7 +281,6 @@ def main():
                                 if "password" not in key.lower() and key != "last_refresh":
                                     del st.session_state[key]
                             st.cache_data.clear()
-                            import time
                             time.sleep(1.5) 
                             st.rerun()
                         else:
@@ -304,7 +303,6 @@ def main():
                             if "password" not in key.lower() and key != "last_refresh":
                                 del st.session_state[key]
                         st.cache_data.clear()
-                        import time
                         time.sleep(1.5)
                         st.rerun()
                         
@@ -340,7 +338,6 @@ def main():
                                 if "password" not in key.lower() and key != "last_refresh":
                                     del st.session_state[key]
                             st.cache_data.clear()
-                            import time
                             time.sleep(1.5)
                             st.rerun()
                         else:
@@ -428,7 +425,6 @@ def main():
                             if "password" not in key.lower() and key != "last_refresh":
                                 del st.session_state[key]
                         st.cache_data.clear()
-                        import time
                         time.sleep(1.5)
                         st.rerun()
             st.subheader("Current Stock")
